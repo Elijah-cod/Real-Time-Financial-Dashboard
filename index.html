@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrypDash — Crypto Dashboard</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Fonts: Syne (display) + DM Sans (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="h-screen w-screen overflow-hidden flex">
+
+    <!-- ===================== SIDEBAR ===================== -->
+    <aside class="sidebar w-64 flex flex-col justify-between shrink-0 hidden md:flex z-20">
+        <div>
+            <!-- Logo -->
+            <div class="h-20 flex items-center px-6 border-b border-white/10">
+                <div class="flex items-center gap-3">
+                    <i class="ph-fill ph-hexagon text-3xl text-accent"></i>
+                    <span class="logo-text text-xl text-white">CrypDash</span>
+                </div>
+            </div>
+
+            <!-- Nav -->
+            <nav class="p-4 space-y-1 mt-4">
+                <a href="#" class="nav-link active flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all">
+                    <i class="ph ph-squares-four text-xl"></i>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all">
+                    <i class="ph ph-chart-line-up text-xl"></i>
+                    Markets
+                </a>
+                <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all">
+                    <i class="ph ph-wallet text-xl"></i>
+                    Portfolio
+                </a>
+                <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all">
+                    <i class="ph ph-arrows-left-right text-xl"></i>
+                    Exchange
+                </a>
+            </nav>
+        </div>
+
+        <!-- Bottom section -->
+        <div class="p-4">
+            <div class="upgrade-card p-4 rounded-2xl mb-2">
+                <h4 class="text-sm font-bold text-white mb-1">Pro Plan</h4>
+                <p class="text-xs text-white/60 mb-4">Advanced charting & unlimited alerts.</p>
+                <button class="upgrade-btn w-full py-2 text-sm font-semibold rounded-xl transition-all">
+                    Upgrade Now
+                </button>
+            </div>
+            <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 mt-2 rounded-xl font-medium transition-all">
+                <i class="ph ph-gear text-xl"></i>
+                Settings
+            </a>
+        </div>
+    </aside>
+
+    <!-- ===================== MAIN ===================== -->
+    <main class="flex-1 flex flex-col h-full relative z-0 overflow-hidden">
+
+        <!-- Background blobs -->
+        <div class="blobs-container absolute inset-0 z-0 pointer-events-none overflow-hidden">
+            <div class="blob blob-1"></div>
+            <div class="blob blob-2"></div>
+            <div class="blob blob-3"></div>
+        </div>
+
+        <!-- ===== HEADER ===== -->
+        <header class="main-header h-20 flex items-center justify-between px-8 z-10 shrink-0">
+
+            <!-- Search -->
+            <div class="relative w-96">
+                <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-lg"></i>
+                <input
+                    type="text"
+                    id="searchInput"
+                    placeholder="Search coins (e.g., Bitcoin, ETH)..."
+                    class="search-input w-full text-sm pl-11 pr-4 py-2.5 rounded-xl focus:outline-none transition-all placeholder-white/30"
+                    autocomplete="off"
+                >
+                <div id="searchResults" class="search-dropdown absolute top-full mt-2 w-full rounded-xl shadow-2xl overflow-hidden hidden max-h-80 overflow-y-auto z-50"></div>
+            </div>
+
+            <!-- Right actions -->
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-4 border-r border-white/10 pr-6">
+                    <button class="header-icon-btn relative">
+                        <i class="ph ph-bell text-2xl"></i>
+                        <span class="notification-dot absolute top-0 right-0 w-2 h-2 rounded-full border-2"></span>
+                    </button>
+                    <button class="header-icon-btn">
+                        <i class="ph ph-question text-2xl"></i>
+                    </button>
+                </div>
+                <div class="flex items-center gap-3 cursor-pointer">
+                    <div class="avatar w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-lg">
+                        JD
+                    </div>
+                    <div class="hidden sm:block">
+                        <p class="text-sm font-semibold text-white">John Doe</p>
+                        <p class="text-xs text-white/50">Premium User</p>
+                    </div>
+                    <i class="ph ph-caret-down text-white/30 text-sm"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- ===== SCROLLABLE CONTENT ===== -->
+        <div class="flex-1 overflow-y-auto p-8 space-y-6 relative z-10" id="mainScrollArea">
+
+            <!-- ROW 1: Chart + Portfolio -->
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+                <!-- Main Price Chart -->
+                <div class="glass-card lg:col-span-3 p-6 flex flex-col">
+                    <!-- Chart Header -->
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="flex items-center gap-4">
+                            <img src="https://assets.coingecko.com/coins/images/1/large/bitcoin.png"
+                                 id="mainChartIcon" alt="BTC"
+                                 class="w-12 h-12 rounded-full bg-white/10 border border-white/10 p-1">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h2 class="text-2xl font-extrabold text-white" id="mainChartName">Bitcoin</h2>
+                                    <span class="coin-badge px-2 py-0.5 text-xs font-bold rounded-md uppercase" id="mainChartSymbol">BTC</span>
+                                </div>
+                                <div class="flex items-end gap-3 mt-1">
+                                    <span class="text-3xl font-light tracking-tight text-white" id="mainChartPrice">$--</span>
+                                    <span class="flex items-center text-sm font-semibold mb-1" id="mainChartChange">--</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Timeframe buttons -->
+                        <div class="timeframe-group flex rounded-xl p-1">
+                            <button class="tf-btn" data-tf="1H">1H</button>
+                            <button class="tf-btn" data-tf="1D">1D</button>
+                            <button class="tf-btn active" data-tf="1W">1W</button>
+                            <button class="tf-btn" data-tf="1M">1M</button>
+                            <button class="tf-btn" data-tf="1Y">1Y</button>
+                        </div>
+                    </div>
+
+                    <!-- Chart Canvas -->
+                    <div class="flex-1 min-h-[250px] w-full relative">
+                        <canvas id="mainChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Portfolio + Watchlist -->
+                <div class="glass-card p-6 flex flex-col">
+                    <h3 class="section-title text-lg font-bold text-white mb-1">Portfolio Value</h3>
+                    <div class="text-4xl font-light tracking-tight text-white mt-2">$124,562<span class="text-2xl">.00</span></div>
+                    <div class="flex items-center gap-1 text-sm font-semibold mt-2 mb-6 text-green-400">
+                        <i class="ph-bold ph-trend-up"></i>
+                        +2.4% ($2,989.48) Today
+                    </div>
+
+                    <h3 class="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Your Watchlist</h3>
+                    <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="watchlistContainer">
+                        <div class="text-center text-white/30 text-sm pt-8" id="emptyWatchlistMsg">
+                            <i class="ph ph-star text-4xl mb-2 block text-white/20"></i>
+                            <p>No coins in watchlist.</p>
+                            <p class="text-xs mt-1 text-white/20">Click the ★ in the market table.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ROW 2: Market Table -->
+            <div class="glass-card overflow-hidden">
+                <div class="p-6 border-b border-white/5 flex justify-between items-center">
+                    <h3 class="section-title text-lg font-bold text-white">Market Overview</h3>
+                    <button class="text-sm text-accent hover:text-accent/80 font-bold flex items-center gap-1 transition-colors">
+                        View All <i class="ph-bold ph-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm whitespace-nowrap">
+                        <thead class="text-xs text-white/40 font-semibold uppercase border-b border-white/5">
+                            <tr>
+                                <th class="px-6 py-4 w-16 text-center">Watch</th>
+                                <th class="px-6 py-4">Asset</th>
+                                <th class="px-6 py-4 text-right">Price</th>
+                                <th class="px-6 py-4 text-right">24h Change</th>
+                                <th class="px-6 py-4 text-right">24h Volume</th>
+                                <th class="px-6 py-4 text-right">Market Cap</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5" id="marketTableBody">
+                            <tr>
+                                <td colspan="6" class="px-6 py-12 text-center text-white/40">
+                                    <i class="ph ph-spinner-gap animate-spin text-3xl mb-2 inline-block text-accent"></i>
+                                    <p>Loading market data...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div><!-- end scrollable -->
+    </main>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
