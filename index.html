@@ -4,151 +4,243 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CrypDash — Crypto Dashboard</title>
-
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-
-    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- Fonts: Syne (display) + DM Sans (body) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="h-screen w-screen overflow-hidden flex">
+<body>
 
-    <!-- ===================== SIDEBAR ===================== -->
-    <aside class="sidebar w-64 flex flex-col justify-between shrink-0 hidden md:flex z-20">
-        <div>
-            <!-- Logo -->
-            <div class="h-20 flex items-center px-6 border-b border-white/10">
-                <div class="flex items-center gap-3">
-                    <i class="ph-fill ph-hexagon text-3xl text-accent"></i>
-                    <span class="logo-text text-xl text-white">CrypDash</span>
+<!-- ═══════════════════════════════════════════════════════════
+     AUTH OVERLAY
+══════════════════════════════════════════════════════════════ -->
+<div id="authOverlay" class="auth-overlay">
+    <div class="auth-blob auth-blob-1"></div>
+    <div class="auth-blob auth-blob-2"></div>
+    <div class="auth-blob auth-blob-3"></div>
+
+    <div class="auth-card">
+        <div class="auth-logo">
+            <i class="ph-fill ph-hexagon" style="font-size:2rem;color:var(--accent)"></i>
+            <span class="logo-text" style="font-size:1.4rem;color:#fff">CrypDash</span>
+        </div>
+
+        <div class="auth-tabs">
+            <button class="auth-tab active" id="tabLogin"  onclick="switchTab('login')">Sign In</button>
+            <button class="auth-tab"        id="tabSignup" onclick="switchTab('signup')">Sign Up</button>
+        </div>
+
+        <!-- LOGIN -->
+        <form id="loginForm" class="auth-form" onsubmit="handleLogin(event)">
+            <p class="auth-subtitle">Welcome back. Sign in to your account.</p>
+
+            <div class="auth-field">
+                <label>Email</label>
+                <div class="auth-input-wrap">
+                    <i class="ph ph-envelope"></i>
+                    <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+                </div>
+            </div>
+            <div class="auth-field">
+                <label>Password</label>
+                <div class="auth-input-wrap">
+                    <i class="ph ph-lock"></i>
+                    <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
                 </div>
             </div>
 
-            <!-- Nav -->
+            <p class="auth-hint">Demo: <strong>demo@crypdash.com</strong> / <strong>demo1234</strong></p>
+            <p class="auth-error" id="loginError"></p>
+
+            <button type="submit" class="auth-submit-btn">
+                <span>Sign In</span><i class="ph-bold ph-arrow-right"></i>
+            </button>
+            <p class="auth-switch">No account? <a onclick="switchTab('signup')">Sign up free →</a></p>
+        </form>
+
+        <!-- SIGNUP -->
+        <form id="signupForm" class="auth-form" style="display:none" onsubmit="handleSignup(event)">
+            <p class="auth-subtitle">Create an account to track your portfolio.</p>
+
+            <div class="auth-field">
+                <label>Full Name</label>
+                <div class="auth-input-wrap">
+                    <i class="ph ph-user"></i>
+                    <input type="text" id="signupName" placeholder="John Doe" autocomplete="name">
+                </div>
+            </div>
+            <div class="auth-field">
+                <label>Email</label>
+                <div class="auth-input-wrap">
+                    <i class="ph ph-envelope"></i>
+                    <input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email">
+                </div>
+            </div>
+            <div class="auth-field">
+                <label>Password <span style="color:var(--text-muted);font-weight:400;font-size:0.75rem">(min 8 chars)</span></label>
+                <div class="auth-input-wrap">
+                    <i class="ph ph-lock"></i>
+                    <input type="password" id="signupPassword" placeholder="••••••••" minlength="8" autocomplete="new-password">
+                </div>
+            </div>
+
+            <p class="auth-error" id="signupError"></p>
+
+            <button type="submit" class="auth-submit-btn">
+                <span>Create Account</span><i class="ph-bold ph-arrow-right"></i>
+            </button>
+            <p class="auth-switch">Have an account? <a onclick="switchTab('login')">Sign in →</a></p>
+        </form>
+
+        <div class="auth-divider"><span>or</span></div>
+        <button class="auth-guest-btn" onclick="continueAsGuest()">
+            <i class="ph ph-eye"></i> Continue as Guest (read-only)
+        </button>
+    </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN APP SHELL
+══════════════════════════════════════════════════════════════ -->
+<div id="appShell" class="app-shell" style="display:none">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar hidden md:flex flex-col justify-between">
+        <div>
+            <div class="sidebar-logo">
+                <i class="ph-fill ph-hexagon" style="font-size:1.8rem;color:var(--accent)"></i>
+                <span class="logo-text text-white" style="font-size:1.2rem">CrypDash</span>
+            </div>
             <nav class="p-4 space-y-1 mt-4">
-                <a href="#" class="nav-link active flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all">
-                    <i class="ph ph-squares-four text-xl"></i>
-                    Dashboard
+                <a href="#" class="nav-link active flex items-center gap-3 px-4 py-3 rounded-xl">
+                    <i class="ph ph-squares-four text-xl"></i> Dashboard
                 </a>
-                <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all">
-                    <i class="ph ph-chart-line-up text-xl"></i>
-                    Markets
+                <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl">
+                    <i class="ph ph-chart-line-up text-xl"></i> Markets
                 </a>
-                <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all">
-                    <i class="ph ph-wallet text-xl"></i>
-                    Portfolio
+                <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl">
+                    <i class="ph ph-wallet text-xl"></i> Portfolio
                 </a>
-                <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all">
-                    <i class="ph ph-arrows-left-right text-xl"></i>
-                    Exchange
+                <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl">
+                    <i class="ph ph-arrows-left-right text-xl"></i> Exchange
                 </a>
             </nav>
         </div>
-
-        <!-- Bottom section -->
         <div class="p-4">
             <div class="upgrade-card p-4 rounded-2xl mb-2">
-                <h4 class="text-sm font-bold text-white mb-1">Pro Plan</h4>
-                <p class="text-xs text-white/60 mb-4">Advanced charting & unlimited alerts.</p>
-                <button class="upgrade-btn w-full py-2 text-sm font-semibold rounded-xl transition-all">
-                    Upgrade Now
-                </button>
+                <h4 style="font-size:0.875rem;font-weight:700;color:#fff;margin-bottom:4px">Pro Plan</h4>
+                <p style="font-size:0.75rem;color:rgba(255,255,255,0.45);margin-bottom:1rem">
+                    Advanced charting &amp; unlimited alerts.
+                </p>
+                <button class="upgrade-btn w-full py-2 text-sm font-semibold rounded-xl">Upgrade Now</button>
             </div>
-            <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 mt-2 rounded-xl font-medium transition-all">
-                <i class="ph ph-gear text-xl"></i>
-                Settings
+            <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 mt-2 rounded-xl">
+                <i class="ph ph-gear text-xl"></i> Settings
             </a>
         </div>
     </aside>
 
-    <!-- ===================== MAIN ===================== -->
-    <main class="flex-1 flex flex-col h-full relative z-0 overflow-hidden">
+    <!-- MAIN -->
+    <main class="main-content">
 
-        <!-- Background blobs -->
-        <div class="blobs-container absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        <!-- Ambient blobs -->
+        <div class="blobs-container" aria-hidden="true">
             <div class="blob blob-1"></div>
             <div class="blob blob-2"></div>
             <div class="blob blob-3"></div>
         </div>
 
-        <!-- ===== HEADER ===== -->
-        <header class="main-header h-20 flex items-center justify-between px-8 z-10 shrink-0">
+        <!-- ── HEADER ──
+             position:relative + z-index:200 ensures it sits
+             above all glass cards & their backdrop-filter stacking contexts -->
+        <header class="main-header">
 
-            <!-- Search -->
-            <div class="relative w-96">
-                <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-lg"></i>
+            <!-- Search container — its own z-index island -->
+            <div class="search-container" id="searchContainer">
+                <i class="ph ph-magnifying-glass search-icon"></i>
                 <input
                     type="text"
                     id="searchInput"
-                    placeholder="Search coins (e.g., Bitcoin, ETH)..."
-                    class="search-input w-full text-sm pl-11 pr-4 py-2.5 rounded-xl focus:outline-none transition-all placeholder-white/30"
+                    class="search-input"
+                    placeholder="Search coins (e.g. Bitcoin, ETH)…"
                     autocomplete="off"
                 >
-                <div id="searchResults" class="search-dropdown absolute top-full mt-2 w-full rounded-xl shadow-2xl overflow-hidden hidden max-h-80 overflow-y-auto z-50"></div>
+                <!--  Dropdown is a DIRECT child of header (not inside any
+                      transformed/blurred ancestor) so z-index works correctly -->
+                <div id="searchResults" class="search-dropdown"></div>
             </div>
 
-            <!-- Right actions -->
-            <div class="flex items-center gap-6">
-                <div class="flex items-center gap-4 border-r border-white/10 pr-6">
-                    <button class="header-icon-btn relative">
-                        <i class="ph ph-bell text-2xl"></i>
-                        <span class="notification-dot absolute top-0 right-0 w-2 h-2 rounded-full border-2"></span>
+            <!-- Right: bells + user -->
+            <div class="header-right">
+                <div class="header-icons">
+                    <button class="header-icon-btn" title="Notifications">
+                        <i class="ph ph-bell" style="font-size:1.4rem"></i>
+                        <span class="notif-dot"></span>
                     </button>
-                    <button class="header-icon-btn">
-                        <i class="ph ph-question text-2xl"></i>
+                    <button class="header-icon-btn" title="Help">
+                        <i class="ph ph-question" style="font-size:1.4rem"></i>
                     </button>
                 </div>
-                <div class="flex items-center gap-3 cursor-pointer">
-                    <div class="avatar w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-lg">
-                        JD
+
+                <div class="user-menu-wrap">
+                    <div class="user-trigger" id="userTrigger" onclick="toggleUserDropdown()">
+                        <div class="avatar" id="userAvatar">JD</div>
+                        <div class="hidden sm:block">
+                            <p id="userDisplayName" class="user-name">John Doe</p>
+                            <p id="userRoleLabel"   class="user-role">Premium User</p>
+                        </div>
+                        <i class="ph ph-caret-down" style="color:rgba(255,255,255,0.3);font-size:0.8rem"></i>
                     </div>
-                    <div class="hidden sm:block">
-                        <p class="text-sm font-semibold text-white">John Doe</p>
-                        <p class="text-xs text-white/50">Premium User</p>
+
+                    <div class="user-dropdown" id="userDropdown">
+                        <div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.08)">
+                            <p id="dropdownName"  style="font-weight:600;color:#fff;font-size:0.875rem">John Doe</p>
+                            <p id="dropdownEmail" style="font-size:0.75rem;color:rgba(255,255,255,0.35)">demo@crypdash.com</p>
+                        </div>
+                        <button class="dropdown-item" onclick="handleLogout()">
+                            <i class="ph ph-sign-out"></i> Sign Out
+                        </button>
                     </div>
-                    <i class="ph ph-caret-down text-white/30 text-sm"></i>
                 </div>
             </div>
         </header>
 
-        <!-- ===== SCROLLABLE CONTENT ===== -->
-        <div class="flex-1 overflow-y-auto p-8 space-y-6 relative z-10" id="mainScrollArea">
+        <!-- ── SCROLLABLE CONTENT ── -->
+        <div class="scroll-area" id="mainScrollArea">
 
-            <!-- ROW 1: Chart + Portfolio -->
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Guest banner -->
+            <div id="guestBanner" class="guest-banner" style="display:none">
+                <i class="ph ph-info"></i>
+                You&rsquo;re browsing as a guest. Your watchlist won&rsquo;t be saved.
+                <a onclick="showAuth()">Sign in to save it →</a>
+            </div>
 
-                <!-- Main Price Chart -->
+            <!-- ROW 1 -->
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+
+                <!-- Chart card -->
                 <div class="glass-card lg:col-span-3 p-6 flex flex-col">
-                    <!-- Chart Header -->
-                    <div class="flex justify-between items-start mb-6">
+                    <div class="chart-header">
                         <div class="flex items-center gap-4">
-                            <img src="https://assets.coingecko.com/coins/images/1/large/bitcoin.png"
-                                 id="mainChartIcon" alt="BTC"
-                                 class="w-12 h-12 rounded-full bg-white/10 border border-white/10 p-1">
+                            <img id="mainChartIcon"
+                                 src="https://assets.coingecko.com/coins/images/1/large/bitcoin.png"
+                                 alt="coin" class="coin-chart-icon">
                             <div>
                                 <div class="flex items-center gap-2">
-                                    <h2 class="text-2xl font-extrabold text-white" id="mainChartName">Bitcoin</h2>
-                                    <span class="coin-badge px-2 py-0.5 text-xs font-bold rounded-md uppercase" id="mainChartSymbol">BTC</span>
+                                    <h2 class="section-title" id="mainChartName" style="font-size:1.5rem;font-weight:800;color:#fff">—</h2>
+                                    <span class="coin-badge" id="mainChartSymbol">—</span>
                                 </div>
                                 <div class="flex items-end gap-3 mt-1">
-                                    <span class="text-3xl font-light tracking-tight text-white" id="mainChartPrice">$--</span>
-                                    <span class="flex items-center text-sm font-semibold mb-1" id="mainChartChange">--</span>
+                                    <span id="mainChartPrice" class="chart-price">—</span>
+                                    <span id="mainChartChange" class="chart-change"></span>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Timeframe buttons -->
-                        <div class="timeframe-group flex rounded-xl p-1">
+                        <div class="timeframe-group">
                             <button class="tf-btn" data-tf="1H">1H</button>
                             <button class="tf-btn" data-tf="1D">1D</button>
                             <button class="tf-btn active" data-tf="1W">1W</button>
@@ -156,58 +248,52 @@
                             <button class="tf-btn" data-tf="1Y">1Y</button>
                         </div>
                     </div>
-
-                    <!-- Chart Canvas -->
-                    <div class="flex-1 min-h-[250px] w-full relative">
+                    <div class="chart-canvas-wrap">
                         <canvas id="mainChart"></canvas>
                     </div>
                 </div>
 
                 <!-- Portfolio + Watchlist -->
                 <div class="glass-card p-6 flex flex-col">
-                    <h3 class="section-title text-lg font-bold text-white mb-1">Portfolio Value</h3>
-                    <div class="text-4xl font-light tracking-tight text-white mt-2">$124,562<span class="text-2xl">.00</span></div>
-                    <div class="flex items-center gap-1 text-sm font-semibold mt-2 mb-6 text-green-400">
-                        <i class="ph-bold ph-trend-up"></i>
-                        +2.4% ($2,989.48) Today
-                    </div>
-
-                    <h3 class="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Your Watchlist</h3>
-                    <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="watchlistContainer">
-                        <div class="text-center text-white/30 text-sm pt-8" id="emptyWatchlistMsg">
-                            <i class="ph ph-star text-4xl mb-2 block text-white/20"></i>
-                            <p>No coins in watchlist.</p>
-                            <p class="text-xs mt-1 text-white/20">Click the ★ in the market table.</p>
+                    <h3 class="section-title" style="font-size:1.1rem;color:#fff;margin-bottom:4px">Portfolio Value</h3>
+                    <div class="portfolio-value">$0<span class="portfolio-cents">.00</span></div>
+                    <!-- <div class="portfolio-change">
+                        <i class="ph-bold ph-trend-up"></i> 0.0% ($0.0) Today
+                    </div> -->
+                    <h3 class="watchlist-label">Your Watchlist</h3>
+                    <div class="watchlist-scroll" id="watchlistContainer">
+                        <div id="emptyWatchlistMsg" class="empty-watchlist">
+                            <i class="ph ph-star" style="font-size:2rem;color:rgba(255,255,255,0.15)"></i>
+                            <p>No coins yet.</p>
+                            <p class="empty-sub">Click ★ in the market table.</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ROW 2: Market Table -->
+            <!-- ROW 2 — Market Table -->
             <div class="glass-card overflow-hidden">
-                <div class="p-6 border-b border-white/5 flex justify-between items-center">
-                    <h3 class="section-title text-lg font-bold text-white">Market Overview</h3>
-                    <button class="text-sm text-accent hover:text-accent/80 font-bold flex items-center gap-1 transition-colors">
-                        View All <i class="ph-bold ph-arrow-right"></i>
-                    </button>
+                <div style="padding:1.5rem;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center">
+                    <h3 class="section-title" style="font-size:1.1rem;color:#fff">Market Overview</h3>
+                    <button class="view-all-btn">View All <i class="ph-bold ph-arrow-right"></i></button>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm whitespace-nowrap">
-                        <thead class="text-xs text-white/40 font-semibold uppercase border-b border-white/5">
+                <div style="overflow-x:auto">
+                    <table class="market-table">
+                        <thead>
                             <tr>
-                                <th class="px-6 py-4 w-16 text-center">Watch</th>
-                                <th class="px-6 py-4">Asset</th>
-                                <th class="px-6 py-4 text-right">Price</th>
-                                <th class="px-6 py-4 text-right">24h Change</th>
-                                <th class="px-6 py-4 text-right">24h Volume</th>
-                                <th class="px-6 py-4 text-right">Market Cap</th>
+                                <th style="text-align:center;width:64px">Watch</th>
+                                <th>Asset</th>
+                                <th style="text-align:right">Price</th>
+                                <th style="text-align:right">24h Change</th>
+                                <th style="text-align:right">24h Volume</th>
+                                <th style="text-align:right">Market Cap</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-white/5" id="marketTableBody">
+                        <tbody id="marketTableBody">
                             <tr>
-                                <td colspan="6" class="px-6 py-12 text-center text-white/40">
-                                    <i class="ph ph-spinner-gap animate-spin text-3xl mb-2 inline-block text-accent"></i>
-                                    <p>Loading market data...</p>
+                                <td colspan="6" class="table-loading">
+                                    <i class="ph ph-spinner-gap animate-spin" style="font-size:1.75rem;color:var(--accent)"></i>
+                                    <p>Fetching live prices…</p>
                                 </td>
                             </tr>
                         </tbody>
@@ -215,9 +301,10 @@
                 </div>
             </div>
 
-        </div><!-- end scrollable -->
+        </div><!-- /scroll-area -->
     </main>
+</div><!-- /appShell -->
 
-    <script src="js/app.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
