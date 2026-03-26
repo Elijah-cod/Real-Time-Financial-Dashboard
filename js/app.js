@@ -86,6 +86,7 @@ function debounce(fn, wait=300) {
 let toastTimer;
 function showToast(msg, duration=3000) {
     const el = document.getElementById('toast');
+    if (!el) return;   // guard: missing element must never throw and kill callers
     el.textContent = msg;
     el.classList.add('show');
     clearTimeout(toastTimer);
@@ -351,20 +352,35 @@ function tfConfig(tf) {
 }
 
 function initChart() {
-    const ctx      = document.getElementById('mainChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 340);
-    gradient.addColorStop(0, 'rgba(255,51,68,0.30)');
-    gradient.addColorStop(1, 'rgba(255,51,68,0.00)');
+    const ctx = document.getElementById('mainChart').getContext('2d');
+
+    // Plugin: recreate gradient on every draw so it always matches the live
+    // canvas dimensions. A gradient created before Chart.js resizes the canvas
+    // becomes stale (the context state is reset when canvas.width/height are
+    // set), which makes the fill render as transparent and can suppress the
+    // line in some browsers.
+    const dynamicGradient = {
+        id: 'dynamicGradient',
+        beforeDraw(chart) {
+            const { ctx: c, chartArea } = chart;
+            if (!chartArea) return;
+            const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+            gradient.addColorStop(0, 'rgba(255,51,68,0.30)');
+            gradient.addColorStop(1, 'rgba(255,51,68,0.00)');
+            chart.data.datasets[0].backgroundColor = gradient;
+        }
+    };
 
     mainChartInstance = new Chart(ctx, {
         type: 'line',
+        plugins: [dynamicGradient],
         data: {
             labels: [],
             datasets: [{
                 label: 'Price',
                 data: [],
                 borderColor: ACCENT,
-                backgroundColor: gradient,
+                backgroundColor: 'transparent', // replaced each draw by plugin
                 borderWidth: 2,
                 pointRadius: 0,
                 pointHoverRadius: 6,

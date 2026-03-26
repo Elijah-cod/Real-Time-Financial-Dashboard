@@ -63,7 +63,7 @@
                 </div>
             </div>
 
-            <p class="auth-hint">Demo: <strong>demo@crypdash.com</strong> / <strong>demo1234</strong></p>
+            <p class="auth-hint">Demo: <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="b8dcddd5d7f8dbcac1c8dcd9cbd096dbd7d5">[email&#160;protected]</a></strong> / <strong>demo1234</strong></p>
             <p class="auth-error" id="loginError"></p>
 
             <button type="submit" class="auth-submit-btn">
@@ -192,7 +192,7 @@
                         placeholder="Search coins…"
                         autocomplete="off"
                     >
-                    <div id="searchResults" class="search-dropdown"></div>
+                    <div id="searchResults" class="search-dropdown hidden"></div>
                 </div>
             </div>
 
@@ -262,7 +262,7 @@
                 <button onclick="toggleMobileSearch()" style="color:var(--text-muted);line-height:1">
                     <i class="ph ph-x" style="font-size:1rem"></i>
                 </button>
-                <div id="mobileSearchResults" class="search-dropdown mobile-search-dropdown"></div>
+                <div id="mobileSearchResults" class="search-dropdown mobile-search-dropdown hidden"></div>
             </div>
         </div>
 
@@ -368,7 +368,7 @@
 </div><!-- /appShell -->
 
 <!-- Toast notification -->
-<div class="toast" id="toast"></div>
+<div id="toast" class="toast"></div>
 
 <script src="js/app.js"></script>
 </body>
