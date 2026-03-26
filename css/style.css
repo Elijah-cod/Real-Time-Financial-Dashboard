@@ -14,6 +14,7 @@
     --text-muted:    rgba(255,255,255,0.4);
     --blur:          blur(20px);
     --radius:        20px;
+    --sidebar-w:     256px;
 }
 
 /* ── Reset & Base ───────────────────────────────────────────── */
@@ -43,22 +44,35 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .animate-spin { animation: spin 0.9s linear infinite; display:inline-block; }
 
 /* ══════════════════════════════════════════════════════════════
-   AUTH OVERLAY
+   AUTH OVERLAY  (always a dismissible modal)
 ══════════════════════════════════════════════════════════════ */
 .auth-overlay {
     position: fixed;
     inset: 0;
-    background: var(--bg);
+    background: rgba(11,13,18,0.88);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 9999;
-    overflow: hidden;
+    overflow-y: auto;
+    padding: 1rem;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* ambient blobs behind the card */
 .auth-blob {
-    position: absolute;
+    position: fixed;
     border-radius: 50%;
     pointer-events: none;
     filter: blur(100px);
@@ -88,12 +102,50 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     z-index: 1;
     width: 100%;
     max-width: 420px;
-    background: rgba(255,255,255,0.04);
+    background: rgba(20,22,31,0.97);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 2rem;
-    backdrop-filter: var(--blur);
-    box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    box-shadow: 0 32px 80px rgba(0,0,0,0.7);
+    animation: slideUp 0.25s ease;
+}
+
+/* Close button */
+.auth-close-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    transition: all 0.15s;
+    line-height: 1;
+}
+.auth-close-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--text);
+}
+
+/* Watchlist sign-in prompt */
+.auth-watchlist-prompt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(204,255,0,0.06);
+    border: 1px solid rgba(204,255,0,0.2);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.75);
+    margin-bottom: 1.25rem;
+    font-weight: 500;
 }
 
 .auth-logo {
@@ -147,9 +199,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     letter-spacing: 0.05em;
 }
 
-.auth-input-wrap {
-    position: relative;
-}
+.auth-input-wrap { position: relative; }
 .auth-input-wrap i {
     position: absolute;
     left: 14px;
@@ -226,42 +276,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 }
 .auth-switch a { color: var(--accent); font-weight: 600; }
 
-.auth-divider {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 1rem 0 0.75rem;
-    color: var(--text-muted);
-    font-size: 0.75rem;
-}
-.auth-divider::before,
-.auth-divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-}
-
-.auth-guest-btn {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px;
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-.auth-guest-btn:hover {
-    background: rgba(255,255,255,0.05);
-    color: var(--text);
-    border-color: rgba(255,255,255,0.15);
-}
-
 /* ══════════════════════════════════════════════════════════════
    APP SHELL  (flex row: sidebar + main)
 ══════════════════════════════════════════════════════════════ */
@@ -272,17 +286,31 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     overflow: hidden;
 }
 
+/* ── Mobile sidebar overlay backdrop ───────────────────────── */
+.mobile-sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 299;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    animation: fadeIn 0.2s ease;
+}
+.mobile-sidebar-overlay.active { display: block; }
+
 /* ── Sidebar ────────────────────────────────────────────────── */
 .sidebar {
-    width: 256px;
-    min-width: 256px;
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
     background: rgba(11,13,18,0.97);
     border-right: 1px solid var(--border);
-    backdrop-filter: var(--blur);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    z-index: 20;
+    z-index: 300;
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    flex-shrink: 0;
 }
 .sidebar-logo {
     height: 80px;
@@ -292,6 +320,24 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     padding: 0 1.5rem;
     border-bottom: 1px solid var(--border);
 }
+
+/* Sidebar close button — mobile only */
+.sidebar-close-btn {
+    margin-left: auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+    transition: all 0.15s;
+}
+.sidebar-close-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
 
 .nav-link {
     display: flex;
@@ -305,7 +351,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     text-decoration: none;
     transition: all 0.15s;
 }
-.nav-link:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+.nav-link:hover { background: rgba(255,255,255,0.05); color: var(--text); text-decoration: none; }
 .nav-link.active {
     background: rgba(255,51,68,0.1);
     color: var(--accent);
@@ -336,6 +382,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     height: 100vh;
     overflow: hidden;
     position: relative;
+    min-width: 0;
 }
 
 /* ── Blobs ──────────────────────────────────────────────────── */
@@ -370,15 +417,11 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 @keyframes driftC { from{transform:translateX(0)}                 to{transform:translateX(-25px) translateY(18px)} }
 
 /* ══════════════════════════════════════════════════════════════
-   HEADER  — must sit above everything including backdrop-filter
-   stacking contexts created by glass cards
+   HEADER
 ══════════════════════════════════════════════════════════════ */
 .main-header {
-    /* Critical: position+z-index creates a new stacking context
-       that is guaranteed above the glass cards below it */
     position: relative;
     z-index: 200;
-
     height: 80px;
     display: flex;
     align-items: center;
@@ -386,16 +429,67 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     padding: 0 2rem;
     background: rgba(11,13,18,0.82);
     backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
     border-bottom: 1px solid var(--border);
     box-shadow: 0 1px 0 rgba(255,255,255,0.02);
     flex-shrink: 0;
+    gap: 1rem;
 }
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Mobile hamburger */
+.mobile-menu-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    transition: all 0.15s;
+}
+.mobile-menu-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+
+/* Mobile logo — hidden on desktop */
+.mobile-logo {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* Mobile search toggle button */
+.mobile-search-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: all 0.15s;
+}
+.mobile-search-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
 
 /* ── Search ─────────────────────────────────────────────────── */
 .search-container {
-    position: relative;   /* anchor for the dropdown */
+    position: relative;
     width: 380px;
-    /* No transform, no backdrop-filter here — keeps z-index predictable */
+    max-width: 100%;
 }
 
 .search-icon {
@@ -429,15 +523,54 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 }
 .search-input::placeholder { color: rgba(255,255,255,0.22); }
 
+/* ── Mobile search bar (expands below header) ───────────────── */
+.mobile-search-bar {
+    display: none;
+    padding: 12px 1rem;
+    background: rgba(11,13,18,0.95);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    z-index: 190;
+}
+.mobile-search-bar.active { display: flex; }
+
+.mobile-search-inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+}
+.mobile-search-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.875rem;
+    caret-color: var(--accent);
+    min-width: 0;
+}
+.mobile-search-input::placeholder { color: rgba(255,255,255,0.25); }
+
+.mobile-search-dropdown {
+    top: calc(100% + 8px) !important;
+    left: 0 !important;
+    right: 0 !important;
+}
+
 /* ── Search dropdown ────────────────────────────────────────── */
 .search-dropdown {
-    /* The key fix: very high z-index, no backdrop-filter ancestor to fight */
     position: absolute;
     top: calc(100% + 8px);
     left: 0;
     right: 0;
     z-index: 9999;
-
     background: #14161f;
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 14px;
@@ -478,13 +611,14 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .header-right {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: 1rem;
+    flex-shrink: 0;
 }
 .header-icons {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding-right: 1.5rem;
+    gap: 0.75rem;
+    padding-right: 1rem;
     border-right: 1px solid var(--border);
 }
 .header-icon-btn {
@@ -501,6 +635,27 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     background: var(--accent);
     border-radius: 50%;
     border: 2px solid var(--bg);
+}
+
+/* Header Sign In button (guest) */
+.header-signin-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 10px;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.header-signin-btn:hover {
+    background: #e02030;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(255,51,68,0.4);
 }
 
 /* User menu */
@@ -524,6 +679,12 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     letter-spacing: 0.05em;
     flex-shrink: 0;
 }
+.avatar.guest-avatar {
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.08));
+    border: 1px solid var(--border);
+}
+
+.user-name-block { display: none; }
 .user-name { font-size: 0.875rem; font-weight: 600; color: #fff; }
 .user-role { font-size: 0.72rem; color: var(--text-muted); }
 
@@ -563,7 +724,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     overflow-y: auto;
     padding: 2rem;
     position: relative;
-    z-index: 1;  /* below header (200) but above blobs (0) */
+    z-index: 1;
 }
 
 /* ── Guest banner ───────────────────────────────────────────── */
@@ -578,17 +739,15 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     font-size: 0.85rem;
     color: rgba(255,255,255,0.7);
     margin-bottom: 1.5rem;
+    flex-wrap: wrap;
 }
-.guest-banner a { color: var(--accent); font-weight: 600; }
+.guest-banner a { color: var(--accent); font-weight: 600; white-space: nowrap; }
 
 /* ══════════════════════════════════════════════════════════════
    GLASS CARDS
 ══════════════════════════════════════════════════════════════ */
 .glass-card {
     background: rgba(255,255,255,0.03);
-    /* backdrop-filter creates its own stacking context —
-       that's why the search dropdown needed z-index:9999 on
-       an ancestor that has NO backdrop-filter */
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
     border: 1px solid var(--border);
@@ -600,10 +759,8 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 }
 .glass-card:hover { border-color: rgba(255,255,255,0.11); }
 
-/* ── Section title ──────────────────────────────────────────── */
 .section-title { font-family: 'Syne', sans-serif; letter-spacing: -0.3px; }
 
-/* ── Coin badge ─────────────────────────────────────────────── */
 .coin-badge {
     display: inline-block;
     background: rgba(255,255,255,0.07);
@@ -640,7 +797,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     color: #fff;
 }
 .chart-change { font-size: 0.875rem; font-weight: 600; }
-.chart-canvas-wrap { flex: 1; min-height: 250px; position: relative; }
+.chart-canvas-wrap { flex: 1; min-height: 220px; position: relative; }
 
 /* ── Timeframe buttons ──────────────────────────────────────── */
 .timeframe-group {
@@ -652,7 +809,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     gap: 2px;
 }
 .tf-btn {
-    padding: 6px 12px;
+    padding: 6px 10px;
     font-size: 0.72rem;
     font-weight: 600;
     border-radius: 7px;
@@ -674,18 +831,9 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     letter-spacing: -0.02em;
     color: #fff;
     margin-top: 8px;
+    margin-bottom: 1.25rem;
 }
 .portfolio-cents { font-size: 1.5rem; }
-.portfolio-change {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #4ade80;
-    margin-top: 6px;
-    margin-bottom: 1.5rem;
-}
 
 /* ── Watchlist panel ────────────────────────────────────────── */
 .watchlist-label {
@@ -697,6 +845,33 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     color: var(--text-muted);
     margin-bottom: 12px;
 }
+
+/* Guest CTA inside watchlist panel */
+.watchlist-guest-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 12px;
+    border: 1px dashed rgba(255,255,255,0.1);
+    border-radius: 12px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    margin-bottom: 8px;
+}
+.wl-signin-btn {
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 6px 16px;
+    border-radius: 8px;
+    margin-top: 2px;
+    transition: all 0.15s;
+}
+.wl-signin-btn:hover { background: #e02030; }
+
 .watchlist-scroll {
     flex: 1;
     overflow-y: auto;
@@ -793,6 +968,9 @@ tr:hover .coin-name-text { color: var(--accent); }
 .watchlist-btn:hover { transform: scale(1.2); color: rgba(204,255,0,0.5); }
 .watchlist-btn.is-watched { color: var(--accent-alt); }
 
+/* Guest star tooltip effect */
+.watchlist-btn.guest-locked:hover { color: rgba(255,51,68,0.6); }
+
 /* ── Percentage badges ──────────────────────────────────────── */
 .pct-up {
     display: inline-flex; align-items: center; gap: 4px;
@@ -815,7 +993,6 @@ tr:hover .coin-name-text { color: var(--accent); }
     background: rgba(255,102,119,0.12); color: #ff6677;
 }
 
-/* ── Misc ───────────────────────────────────────────────────── */
 .view-all-btn {
     display: inline-flex; align-items: center; gap: 4px;
     font-size: 0.85rem; font-weight: 700;
@@ -824,9 +1001,132 @@ tr:hover .coin-name-text { color: var(--accent); }
 }
 .view-all-btn:hover { color: #e02030; }
 
+/* ── Toast notification ─────────────────────────────────────── */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #14161f;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 0.875rem;
+    color: #fff;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    z-index: 99999;
+    pointer-events: none;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease;
+    opacity: 0;
+    white-space: nowrap;
+}
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
 /* Row stagger animation */
 @keyframes fadeInRow {
     from { opacity: 0; transform: translateY(5px); }
     to   { opacity: 1; transform: translateY(0); }
 }
 #marketTableBody tr { animation: fadeInRow 0.25s ease both; }
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE — TABLET  (< 1024px)
+══════════════════════════════════════════════════════════════ */
+@media (max-width: 1023px) {
+    .user-name-block { display: none !important; }
+    .header-icons .title-hide { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE — MOBILE  (< 768px)
+══════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+
+    /* Sidebar becomes an off-canvas drawer */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        transform: translateX(-100%);
+        z-index: 300;
+        width: 280px;
+        min-width: 280px;
+    }
+    .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 8px 0 40px rgba(0,0,0,0.6);
+    }
+    .sidebar-close-btn { display: flex; }
+
+    /* Show hamburger, mobile logo */
+    .mobile-menu-btn { display: flex; }
+    .mobile-logo     { display: flex; }
+
+    /* Hide desktop search in header, show mobile search toggle */
+    .search-container  { display: none; }
+    .mobile-search-btn { display: flex; }
+
+    /* Header padding */
+    .main-header { padding: 0 1rem; height: 64px; }
+
+    /* Hide some header icons on very small screens */
+    .header-icons { display: none; }
+
+    /* Hide Sign In text on narrow screens */
+    .header-signin-btn span { display: none; }
+    .header-signin-btn {
+        padding: 8px 10px;
+        border-radius: 10px;
+    }
+
+    /* Scroll area padding */
+    .scroll-area { padding: 1rem; }
+
+    /* Guest banner */
+    .guest-banner { font-size: 0.78rem; gap: 6px; }
+
+    /* Chart header */
+    .chart-price { font-size: 1.4rem; }
+    .coin-chart-icon { width: 36px; height: 36px; }
+    .chart-canvas-wrap { min-height: 180px; }
+
+    /* Timeframe group — smaller */
+    .timeframe-group { gap: 1px; }
+    .tf-btn { padding: 5px 7px; font-size: 0.68rem; }
+
+    /* Portfolio value */
+    .portfolio-value { font-size: 1.75rem; }
+    .portfolio-cents { font-size: 1.2rem; }
+
+    /* Market table — hide volume & mcap columns on mobile */
+    .col-hide-sm { display: none; }
+    .market-table th,
+    .market-table td { padding: 12px 12px; }
+
+    /* Auth card */
+    .auth-card { padding: 1.5rem 1.25rem; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE — SMALL DESKTOP  (768px – 1023px)
+══════════════════════════════════════════════════════════════ */
+@media (min-width: 768px) and (max-width: 1023px) {
+    :root { --sidebar-w: 220px; }
+    .search-container { width: 260px; }
+    .scroll-area { padding: 1.25rem; }
+    .chart-price { font-size: 1.6rem; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE — LARGE DESKTOP  (> 768px)  show name block
+══════════════════════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+    .user-name-block { display: block; }
+    .mobile-menu-btn { display: none; }
+    .mobile-logo     { display: none; }
+    .mobile-search-btn { display: none; }
+}

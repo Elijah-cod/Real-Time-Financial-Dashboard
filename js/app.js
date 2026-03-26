@@ -1,30 +1,29 @@
 /* ══════════════════════════════════════════════════════════════
    CrypDash — app.js
-   Auth · Live prices · Debounced search · localStorage watchlist
+   Auto-guest · Auth modal · Watchlist (auth required) · Responsive
 ══════════════════════════════════════════════════════════════ */
 'use strict';
 
 // ── Constants ────────────────────────────────────────────────
 const API_URL      = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false';
-const USERS_KEY    = 'crypdash_users';       // registered accounts
-const SESSION_KEY  = 'crypdash_session';     // current logged-in user id
-const WATCH_PREFIX = 'crypdash_wl_';        // + userId  → watchlist
+const USERS_KEY    = 'crypdash_users';
+const SESSION_KEY  = 'crypdash_session';
+const WATCH_PREFIX = 'crypdash_wl_';
 const ACCENT       = '#ff3344';
 
-// Built-in demo account (always available)
 const DEMO_ACCOUNT = { id: 'demo', name: 'Demo User', email: 'demo@crypdash.com', password: 'demo1234' };
 
 // ── State ────────────────────────────────────────────────────
 let marketData        = [];
-let watchlist         = [];           // coin id strings
+let watchlist         = [];
 let mainChartInstance = null;
 let activeCoin        = null;
 let activeTf          = '1W';
-let currentUser       = null;         // { id, name, email }
-let isGuest           = false;
+let currentUser       = null;   // { id, name, email } or null (= guest)
+let isGuest           = true;
 
 // ════════════════════════════════════════════════════════════
-// MOCK FALLBACK DATA  (CoinGecko rate-limit safety net)
+// MOCK FALLBACK DATA
 // ════════════════════════════════════════════════════════════
 const MOCK = [
     { id:'bitcoin',       symbol:'btc',  name:'Bitcoin',   image:'https://assets.coingecko.com/coins/images/1/large/bitcoin.png',             current_price:71334,    price_change_percentage_24h: 0.12, total_volume:40_950_000_000, market_cap:1_430_000_000_000 },
@@ -75,7 +74,6 @@ function initials(name='') {
     return name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'U';
 }
 
-// Debounce: fn fires only after `wait` ms of silence
 function debounce(fn, wait=300) {
     let t;
     return function(...args) {
@@ -84,10 +82,19 @@ function debounce(fn, wait=300) {
     };
 }
 
+// Toast notification
+let toastTimer;
+function showToast(msg, duration=3000) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
 // ════════════════════════════════════════════════════════════
 // AUTH — localStorage user store
 // ════════════════════════════════════════════════════════════
-
 function getUsers() {
     try { return JSON.parse(localStorage.getItem(USERS_KEY)) || []; }
     catch { return []; }
@@ -112,13 +119,10 @@ function handleLogin(e) {
     const password = document.getElementById('loginPassword').value;
     const errEl    = document.getElementById('loginError');
 
-    // Check demo account
     if (email === DEMO_ACCOUNT.email && password === DEMO_ACCOUNT.password) {
         loginSuccess(DEMO_ACCOUNT);
         return;
     }
-
-    // Check registered accounts
     const users = getUsers();
     const user  = users.find(u => u.email === email && u.password === password);
     if (user) {
@@ -135,22 +139,14 @@ function handleSignup(e) {
     const password = document.getElementById('signupPassword').value;
     const errEl    = document.getElementById('signupError');
 
-    if (!name || !email || !password) {
-        errEl.textContent = 'Please fill in all fields.';
-        return;
-    }
-    if (password.length < 8) {
-        errEl.textContent = 'Password must be at least 8 characters.';
-        return;
-    }
+    if (!name || !email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
+    if (password.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
 
     const users = getUsers();
-
     if (email === DEMO_ACCOUNT.email || users.find(u => u.email === email)) {
         errEl.textContent = 'An account with that email already exists.';
         return;
     }
-
     const newUser = { id: 'u_' + Date.now(), name, email, password };
     users.push(newUser);
     saveUsers(users);
@@ -161,104 +157,169 @@ function loginSuccess(user) {
     currentUser = { id: user.id, name: user.name, email: user.email };
     isGuest     = false;
     localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
-    watchlist   = loadWatchlist();
-    showApp();
+
+    // Merge any temp guest watchlist? (optional — we discard it on login)
+    watchlist = loadWatchlist();
+
+    closeAuth();
+    updateHeaderUI();
+    renderMarketTable();
+    renderWatchlist();
+    showToast(`Welcome back, ${user.name.split(' ')[0]}! 👋`);
 }
 
-function continueAsGuest() {
-    currentUser = null;
-    isGuest     = true;
-    watchlist   = [];
-    showApp();
-}
-
+// Logout → return to guest mode (no auth overlay)
 function handleLogout() {
     localStorage.removeItem(SESSION_KEY);
     currentUser = null;
-    isGuest     = false;
+    isGuest     = true;
     watchlist   = [];
+    document.getElementById('userDropdown').classList.remove('open');
+    updateHeaderUI();
+    renderMarketTable();
+    renderWatchlist();
+    showToast('Signed out. Browsing as guest.');
+}
 
-    // Reset UI and show auth
-    document.getElementById('appShell').style.display = 'none';
-    document.getElementById('authOverlay').style.display = 'flex';
+// ── showAuth: always a modal overlay (app remains mounted) ──
+function showAuth(fromWatchlist = false) {
+    const overlay = document.getElementById('authOverlay');
+    const prompt  = document.getElementById('authWatchlistPrompt');
 
-    // Clear forms
+    // Show/hide the watchlist prompt
+    prompt.style.display = fromWatchlist ? 'flex' : 'none';
+
+    overlay.style.display = 'flex';
+    switchTab('login');
+    // Clear form fields
     ['loginEmail','loginPassword','signupName','signupEmail','signupPassword']
         .forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
     document.getElementById('loginError').textContent  = '';
     document.getElementById('signupError').textContent = '';
-    switchTab('login');
 }
 
-function showAuth() {
-    document.getElementById('appShell').style.display   = 'none';
-    document.getElementById('authOverlay').style.display = 'flex';
-    switchTab('login');
-}
-
-function showApp() {
+function closeAuth() {
     document.getElementById('authOverlay').style.display = 'none';
-    document.getElementById('appShell').style.display    = 'flex';
-
-    // Update header UI
-    const name  = currentUser ? currentUser.name  : 'Guest';
-    const email = currentUser ? currentUser.email : '—';
-    const role  = isGuest ? 'Guest' : 'Premium User';
-
-    document.getElementById('userDisplayName').textContent = name;
-    document.getElementById('userRoleLabel').textContent   = role;
-    document.getElementById('userAvatar').textContent      = isGuest ? '?' : initials(name);
-    document.getElementById('dropdownName').textContent    = name;
-    document.getElementById('dropdownEmail').textContent   = email;
-
-    // Guest banner
-    document.getElementById('guestBanner').style.display = isGuest ? 'flex' : 'none';
-
-    // Boot the dashboard
-    if (!mainChartInstance) {
-        initChart();
-        initTimeframeButtons();
-        initSearch();
-        initClickOutside();
-    }
-
-    // Always (re-)fetch data when showing app
-    fetchMarketData();
 }
 
+// Click on overlay backdrop (not on card) → close
+function handleOverlayClick(e) {
+    if (e.target === document.getElementById('authOverlay')) {
+        closeAuth();
+    }
+}
+
+// ── tryAutoLogin: session found → log in, else → guest ──
 function tryAutoLogin() {
     try {
         const stored = localStorage.getItem(SESSION_KEY);
         if (stored) {
-            currentUser = JSON.parse(stored);
+            const user = JSON.parse(stored);
+            currentUser = user;
             isGuest     = false;
             watchlist   = loadWatchlist();
-            showApp();
+            updateHeaderUI();
             return;
         }
     } catch { /**/ }
-    // Show auth overlay
-    document.getElementById('authOverlay').style.display = 'flex';
-    document.getElementById('appShell').style.display    = 'none';
+    // Default: guest
+    currentUser = null;
+    isGuest     = true;
+    watchlist   = [];
+    updateHeaderUI();
+}
+
+// ── Update header to reflect auth state ──
+function updateHeaderUI() {
+    const name  = currentUser ? currentUser.name  : 'Guest';
+    const email = currentUser ? currentUser.email : '—';
+
+    document.getElementById('userDisplayName').textContent = name;
+    document.getElementById('userRoleLabel').textContent   = isGuest ? 'Browsing' : 'Premium User';
+    document.getElementById('dropdownName').textContent    = name;
+    document.getElementById('dropdownEmail').textContent   = email;
+
+    const avatarEl = document.getElementById('userAvatar');
+    avatarEl.textContent = isGuest ? '?' : initials(name);
+    avatarEl.className   = 'avatar' + (isGuest ? ' guest-avatar' : '');
+
+    // Toggle sign-in / sign-out in dropdown
+    document.getElementById('dropdownSignIn').style.display  = isGuest ? 'flex' : 'none';
+    document.getElementById('dropdownSignOut').style.display = isGuest ? 'none' : 'flex';
+
+    // Header sign-in button (only guest, small screens)
+    document.getElementById('headerSignInBtn').style.display = isGuest ? 'flex' : 'none';
+
+    // Guest banner
+    document.getElementById('guestBanner').style.display = isGuest ? 'flex' : 'none';
+
+    // Watchlist guest CTA
+    const wlCta = document.getElementById('watchlistGuestCta');
+    if (wlCta) wlCta.style.display = isGuest ? 'flex' : 'none';
 }
 
 // ════════════════════════════════════════════════════════════
-// WATCHLIST  (per-user localStorage)
+// MOBILE SIDEBAR
+// ════════════════════════════════════════════════════════════
+function toggleMobileSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('mobileSidebarOverlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+    document.body.style.overflow = sidebar.classList.contains('open') ? 'hidden' : '';
+}
+
+function closeMobileSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('mobileSidebarOverlay').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// ════════════════════════════════════════════════════════════
+// MOBILE SEARCH
+// ════════════════════════════════════════════════════════════
+function toggleMobileSearch() {
+    const bar = document.getElementById('mobileSearchBar');
+    const isActive = bar.classList.toggle('active');
+    if (isActive) {
+        setTimeout(() => document.getElementById('mobileSearchInput').focus(), 100);
+    } else {
+        document.getElementById('mobileSearchResults').classList.add('hidden');
+    }
+}
+
+// ════════════════════════════════════════════════════════════
+// WATCHLIST  (per-user localStorage — guests cannot save)
 // ════════════════════════════════════════════════════════════
 function watchKey() {
     return WATCH_PREFIX + (currentUser ? currentUser.id : 'guest');
 }
 function loadWatchlist() {
+    if (isGuest) return [];
     try { return JSON.parse(localStorage.getItem(watchKey())) || []; }
     catch { return []; }
 }
 function saveWatchlist() {
-    if (!isGuest) localStorage.setItem(watchKey(), JSON.stringify(watchlist));
+    if (isGuest) return;
+    localStorage.setItem(watchKey(), JSON.stringify(watchlist));
 }
+
 function toggleWatchlist(coinId) {
+    // Guests must sign in first
+    if (isGuest) {
+        showAuth(true);  // show with watchlist prompt
+        return;
+    }
     const idx = watchlist.indexOf(coinId);
-    if (idx > -1) watchlist.splice(idx, 1);
-    else          watchlist.push(coinId);
+    if (idx > -1) {
+        watchlist.splice(idx, 1);
+        const coin = marketData.find(c => c.id === coinId);
+        showToast(`Removed ${coin ? coin.name : coinId} from watchlist`);
+    } else {
+        watchlist.push(coinId);
+        const coin = marketData.find(c => c.id === coinId);
+        showToast(`Added ${coin ? coin.name : coinId} to watchlist ⭐`);
+    }
     saveWatchlist();
     renderMarketTable();
     renderWatchlist();
@@ -267,17 +328,14 @@ function toggleWatchlist(coinId) {
 // ════════════════════════════════════════════════════════════
 // CHART
 // ════════════════════════════════════════════════════════════
-
-// Generate plausible mock price history ending at currentPrice
 function mockHistory(currentPrice, points, volFactor=0.018) {
     const data = [];
-    // Start from a point in the past (slightly different from current)
     let price  = currentPrice * (1 - (Math.random() * 0.06 - 0.01));
     for (let i = 0; i < points - 1; i++) {
         price += (Math.random() - 0.47) * price * volFactor;
         data.push(Math.max(price, 0.000001));
     }
-    data.push(currentPrice); // always end at real price
+    data.push(currentPrice);
     return data;
 }
 
@@ -288,7 +346,7 @@ function tfConfig(tf) {
         case '1W': return { labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],      vol:0.018 };
         case '1M': return { labels: Array.from({length:30}, (_,i)=>`D${i+1}`),     vol:0.025 };
         case '1Y': return { labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], vol:0.045 };
-        default:   return { labels: Array.from({length:7},  (_,i)=>['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]), vol:0.018 };
+        default:   return { labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],      vol:0.018 };
     }
 }
 
@@ -331,9 +389,7 @@ function initChart() {
                     borderWidth: 1,
                     padding: 12,
                     displayColors: false,
-                    callbacks: {
-                        label: ctx => 'Price: ' + fmtPrice(ctx.parsed.y),
-                    }
+                    callbacks: { label: ctx => 'Price: ' + fmtPrice(ctx.parsed.y) }
                 }
             },
             scales: {
@@ -396,14 +452,25 @@ function renderMarketTable() {
     tbody.innerHTML = '';
 
     marketData.forEach((coin, idx) => {
-        const watched = watchlist.includes(coin.id);
+        const watched = !isGuest && watchlist.includes(coin.id);
         const tr      = document.createElement('tr');
         tr.style.animationDelay = `${idx * 25}ms`;
 
+        // For guests, star shows a lock icon on hover
+        const starClass = isGuest
+            ? 'watchlist-btn guest-locked'
+            : `watchlist-btn${watched?' is-watched':''}`;
+        const starIcon  = watched
+            ? 'ph-fill ph-star'
+            : (isGuest ? 'ph ph-lock' : 'ph ph-star');
+        const starTitle = isGuest
+            ? 'Sign in to save to watchlist'
+            : (watched ? 'Remove from watchlist' : 'Add to watchlist');
+
         tr.innerHTML = `
             <td style="text-align:center">
-                <button class="watchlist-btn${watched?' is-watched':''}" data-id="${coin.id}" title="${watched?'Remove from watchlist':'Add to watchlist'}">
-                    <i class="${watched?'ph-fill ph-star':'ph ph-star'}"></i>
+                <button class="${starClass}" data-id="${coin.id}" title="${starTitle}">
+                    <i class="${starIcon}"></i>
                 </button>
             </td>
             <td>
@@ -418,22 +485,22 @@ function renderMarketTable() {
             </td>
             <td style="text-align:right;font-weight:600;color:#fff">${fmtPrice(coin.current_price)}</td>
             <td style="text-align:right">${pctBadge(coin.price_change_percentage_24h)}</td>
-            <td style="text-align:right;color:rgba(255,255,255,0.4)">${fmtCurrency(coin.total_volume)}</td>
-            <td style="text-align:right;color:rgba(255,255,255,0.4)">${fmtCurrency(coin.market_cap)}</td>
+            <td style="text-align:right;color:rgba(255,255,255,0.4)" class="col-hide-sm">${fmtCurrency(coin.total_volume)}</td>
+            <td style="text-align:right;color:rgba(255,255,255,0.4)" class="col-hide-sm">${fmtCurrency(coin.market_cap)}</td>
         `;
 
-        // Click row → update chart
         tr.addEventListener('click', e => {
             if (!e.target.closest('.watchlist-btn')) {
                 updateMainChartUI(coin);
                 document.getElementById('mainScrollArea').scrollTo({top:0, behavior:'smooth'});
+                // Close mobile sidebar if open
+                closeMobileSidebar();
             }
         });
 
         tbody.appendChild(tr);
     });
 
-    // Star buttons
     document.querySelectorAll('.watchlist-btn').forEach(btn => {
         btn.addEventListener('click', e => {
             e.stopPropagation();
@@ -449,7 +516,13 @@ function renderWatchlist() {
     const container = document.getElementById('watchlistContainer');
     const emptyMsg  = document.getElementById('emptyWatchlistMsg');
 
+    // Clear existing items (keep emptyMsg)
     [...container.children].forEach(c => { if (c !== emptyMsg) c.remove(); });
+
+    if (isGuest) {
+        emptyMsg.style.display = 'none';
+        return;
+    }
 
     const watched = marketData.filter(c => watchlist.includes(c.id));
 
@@ -488,16 +561,13 @@ function renderWatchlist() {
 }
 
 // ════════════════════════════════════════════════════════════
-// SEARCH  (debounced)
+// SEARCH  (debounced — works for both desktop + mobile inputs)
 // ════════════════════════════════════════════════════════════
-function renderSearchResults(query) {
-    const dropdown = document.getElementById('searchResults');
+function renderSearchResults(query, dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
     const q        = query.trim().toLowerCase();
 
-    if (!q) {
-        dropdown.classList.add('hidden');
-        return;
-    }
+    if (!q) { dropdown.classList.add('hidden'); return; }
 
     const hits = marketData
         .filter(c => c.name.toLowerCase().includes(q) || c.symbol.toLowerCase().includes(q))
@@ -532,8 +602,11 @@ function renderSearchResults(query) {
         div.addEventListener('click', () => {
             updateMainChartUI(coin);
             document.getElementById('searchInput').value = '';
+            document.getElementById('mobileSearchInput').value = '';
             dropdown.classList.add('hidden');
             document.getElementById('mainScrollArea').scrollTo({top:0, behavior:'smooth'});
+            // Close mobile search bar
+            document.getElementById('mobileSearchBar').classList.remove('active');
         });
         dropdown.appendChild(div);
     });
@@ -541,16 +614,27 @@ function renderSearchResults(query) {
     dropdown.classList.remove('hidden');
 }
 
-// Debounced version — only fires 300 ms after typing stops
-const debouncedSearch = debounce(e => renderSearchResults(e.target.value), 300);
+const debouncedSearch       = debounce(e => renderSearchResults(e.target.value, 'searchResults'), 300);
+const debouncedMobileSearch = debounce(e => renderSearchResults(e.target.value, 'mobileSearchResults'), 300);
 
 function initSearch() {
-    const input = document.getElementById('searchInput');
-    input.addEventListener('input', debouncedSearch);
-    input.addEventListener('keydown', e => {
+    // Desktop search
+    const desktopInput = document.getElementById('searchInput');
+    desktopInput.addEventListener('input', debouncedSearch);
+    desktopInput.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
             document.getElementById('searchResults').classList.add('hidden');
-            input.blur();
+            desktopInput.blur();
+        }
+    });
+
+    // Mobile search
+    const mobileInput = document.getElementById('mobileSearchInput');
+    mobileInput.addEventListener('input', debouncedMobileSearch);
+    mobileInput.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.getElementById('mobileSearchResults').classList.add('hidden');
+            mobileInput.blur();
         }
     });
 }
@@ -577,18 +661,15 @@ function toggleUserDropdown() {
 }
 
 // ════════════════════════════════════════════════════════════
-// CLICK-OUTSIDE handlers  (search + user dropdown)
+// CLICK-OUTSIDE handlers
 // ════════════════════════════════════════════════════════════
 function initClickOutside() {
     document.addEventListener('click', e => {
-        // Close search dropdown
-        if (!e.target.closest('#searchContainer')) {
+        if (!e.target.closest('#searchContainer'))
             document.getElementById('searchResults').classList.add('hidden');
-        }
-        // Close user dropdown
-        if (!e.target.closest('.user-menu-wrap')) {
+
+        if (!e.target.closest('.user-menu-wrap'))
             document.getElementById('userDropdown').classList.remove('open');
-        }
     });
 }
 
@@ -600,7 +681,6 @@ async function fetchMarketData() {
         const res = await fetch(API_URL);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
-        // Basic validation
         if (!Array.isArray(json) || json.length === 0) throw new Error('Empty response');
         marketData = json;
         console.log(`✅ Live data: ${marketData.length} coins from CoinGecko`);
@@ -612,11 +692,9 @@ async function fetchMarketData() {
     renderMarketTable();
     renderWatchlist();
 
-    // Always update chart header with #1 coin on first load
     if (marketData.length > 0 && !activeCoin) {
         updateMainChartUI(marketData[0]);
     } else if (activeCoin) {
-        // Refresh active coin with fresh price
         const refreshed = marketData.find(c => c.id === activeCoin.id);
         if (refreshed) updateMainChartUI(refreshed);
     }
@@ -626,15 +704,34 @@ async function fetchMarketData() {
 // BOOT
 // ════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-    // Expose auth functions to HTML onclick attributes
-    window.switchTab       = switchTab;
-    window.handleLogin     = handleLogin;
-    window.handleSignup    = handleSignup;
-    window.continueAsGuest = continueAsGuest;
-    window.handleLogout    = handleLogout;
-    window.showAuth        = showAuth;
-    window.toggleUserDropdown = toggleUserDropdown;
+    // Expose to HTML onclick attributes
+    window.switchTab           = switchTab;
+    window.toggleWatchlist     = toggleWatchlist; 
+    window.updateMainChartUI   = updateMainChartUI;
+    window.handleLogin         = handleLogin;
+    window.handleSignup        = handleSignup;
+    window.handleLogout        = handleLogout;
+    window.showAuth            = showAuth;
+    window.closeAuth           = closeAuth;
+    window.handleOverlayClick  = handleOverlayClick;
+    window.toggleUserDropdown  = toggleUserDropdown;
+    window.toggleMobileSidebar = toggleMobileSidebar;
+    window.closeMobileSidebar  = closeMobileSidebar;
+    window.toggleMobileSearch  = toggleMobileSearch;
 
-    // Check for existing session → skip login if found
+    // Initialise dashboard components once
+    initChart();
+    initTimeframeButtons();
+    initSearch();
+    initClickOutside();
+
+    // Try to restore session; otherwise auto-guest
     tryAutoLogin();
+
+    // Update watchlist CTA visibility
+    const wlCta = document.getElementById('watchlistGuestCta');
+    if (wlCta) wlCta.style.display = isGuest ? 'flex' : 'none';
+
+    // Fetch data
+    fetchMarketData();
 });

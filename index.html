@@ -15,17 +15,28 @@
 <body>
 
 <!-- ═══════════════════════════════════════════════════════════
-     AUTH OVERLAY
+     AUTH OVERLAY  (modal — shown on demand, not on load)
 ══════════════════════════════════════════════════════════════ -->
-<div id="authOverlay" class="auth-overlay">
+<div id="authOverlay" class="auth-overlay" style="display:none" onclick="handleOverlayClick(event)">
     <div class="auth-blob auth-blob-1"></div>
     <div class="auth-blob auth-blob-2"></div>
     <div class="auth-blob auth-blob-3"></div>
 
     <div class="auth-card">
+        <!-- Close button — always visible since auth is always a modal now -->
+        <button class="auth-close-btn" id="authCloseBtn" onclick="closeAuth()" title="Continue as guest">
+            <i class="ph ph-x"></i>
+        </button>
+
         <div class="auth-logo">
             <i class="ph-fill ph-hexagon" style="font-size:2rem;color:var(--accent)"></i>
             <span class="logo-text" style="font-size:1.4rem;color:#fff">CrypDash</span>
+        </div>
+
+        <!-- Watchlist prompt (shown when guest tries to star) -->
+        <div class="auth-watchlist-prompt" id="authWatchlistPrompt" style="display:none">
+            <i class="ph-fill ph-star" style="color:var(--accent-alt);font-size:1.1rem"></i>
+            Sign in to save coins to your watchlist
         </div>
 
         <div class="auth-tabs">
@@ -94,11 +105,6 @@
             </button>
             <p class="auth-switch">Have an account? <a onclick="switchTab('login')">Sign in →</a></p>
         </form>
-
-        <div class="auth-divider"><span>or</span></div>
-        <button class="auth-guest-btn" onclick="continueAsGuest()">
-            <i class="ph ph-eye"></i> Continue as Guest (read-only)
-        </button>
     </div>
 </div>
 
@@ -106,14 +112,21 @@
 <!-- ═══════════════════════════════════════════════════════════
      MAIN APP SHELL
 ══════════════════════════════════════════════════════════════ -->
-<div id="appShell" class="app-shell" style="display:none">
+<div id="appShell" class="app-shell">
+
+    <!-- Mobile sidebar overlay backdrop -->
+    <div class="mobile-sidebar-overlay" id="mobileSidebarOverlay" onclick="closeMobileSidebar()"></div>
 
     <!-- SIDEBAR -->
-    <aside class="sidebar hidden md:flex flex-col justify-between">
+    <aside class="sidebar" id="sidebar">
         <div>
             <div class="sidebar-logo">
                 <i class="ph-fill ph-hexagon" style="font-size:1.8rem;color:var(--accent)"></i>
                 <span class="logo-text text-white" style="font-size:1.2rem">CrypDash</span>
+                <!-- Close button for mobile -->
+                <button class="sidebar-close-btn" onclick="closeMobileSidebar()">
+                    <i class="ph ph-x"></i>
+                </button>
             </div>
             <nav class="p-4 space-y-1 mt-4">
                 <a href="#" class="nav-link active flex items-center gap-3 px-4 py-3 rounded-xl">
@@ -154,54 +167,80 @@
             <div class="blob blob-3"></div>
         </div>
 
-        <!-- ── HEADER ──
-             position:relative + z-index:200 ensures it sits
-             above all glass cards & their backdrop-filter stacking contexts -->
+        <!-- ── HEADER ── -->
         <header class="main-header">
 
-            <!-- Search container — its own z-index island -->
-            <div class="search-container" id="searchContainer">
-                <i class="ph ph-magnifying-glass search-icon"></i>
-                <input
-                    type="text"
-                    id="searchInput"
-                    class="search-input"
-                    placeholder="Search coins (e.g. Bitcoin, ETH)…"
-                    autocomplete="off"
-                >
-                <!--  Dropdown is a DIRECT child of header (not inside any
-                      transformed/blurred ancestor) so z-index works correctly -->
-                <div id="searchResults" class="search-dropdown"></div>
+            <!-- Left: hamburger (mobile) + search -->
+            <div class="header-left">
+                <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileSidebar()" aria-label="Open menu">
+                    <i class="ph ph-list"></i>
+                </button>
+
+                <!-- Mobile logo (hidden on desktop) -->
+                <div class="mobile-logo">
+                    <i class="ph-fill ph-hexagon" style="color:var(--accent);font-size:1.4rem"></i>
+                    <span class="logo-text" style="color:#fff;font-size:1rem">CrypDash</span>
+                </div>
+
+                <!-- Search -->
+                <div class="search-container" id="searchContainer">
+                    <i class="ph ph-magnifying-glass search-icon"></i>
+                    <input
+                        type="text"
+                        id="searchInput"
+                        class="search-input"
+                        placeholder="Search coins…"
+                        autocomplete="off"
+                    >
+                    <div id="searchResults" class="search-dropdown"></div>
+                </div>
             </div>
 
             <!-- Right: bells + user -->
             <div class="header-right">
+                <!-- Mobile search toggle -->
+                <button class="mobile-search-btn" id="mobileSearchBtn" onclick="toggleMobileSearch()" aria-label="Search">
+                    <i class="ph ph-magnifying-glass" style="font-size:1.3rem"></i>
+                </button>
+
                 <div class="header-icons">
                     <button class="header-icon-btn" title="Notifications">
                         <i class="ph ph-bell" style="font-size:1.4rem"></i>
                         <span class="notif-dot"></span>
                     </button>
-                    <button class="header-icon-btn" title="Help">
+                    <button class="header-icon-btn title-hide" title="Help">
                         <i class="ph ph-question" style="font-size:1.4rem"></i>
                     </button>
                 </div>
 
-                <div class="user-menu-wrap">
+                <!-- Guest: Sign In CTA -->
+                <button id="headerSignInBtn" class="header-signin-btn" onclick="showAuth(false)" style="display:none">
+                    <i class="ph ph-sign-in"></i>
+                    <span>Sign In</span>
+                </button>
+
+                <!-- Logged-in: user menu -->
+                <div class="user-menu-wrap" id="userMenuWrap">
                     <div class="user-trigger" id="userTrigger" onclick="toggleUserDropdown()">
-                        <div class="avatar" id="userAvatar">JD</div>
-                        <div class="hidden sm:block">
-                            <p id="userDisplayName" class="user-name">John Doe</p>
-                            <p id="userRoleLabel"   class="user-role">Premium User</p>
+                        <div class="avatar" id="userAvatar">?</div>
+                        <div class="user-name-block">
+                            <p id="userDisplayName" class="user-name">Guest</p>
+                            <p id="userRoleLabel"   class="user-role">Browsing</p>
                         </div>
                         <i class="ph ph-caret-down" style="color:rgba(255,255,255,0.3);font-size:0.8rem"></i>
                     </div>
 
                     <div class="user-dropdown" id="userDropdown">
                         <div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.08)">
-                            <p id="dropdownName"  style="font-weight:600;color:#fff;font-size:0.875rem">John Doe</p>
-                            <p id="dropdownEmail" style="font-size:0.75rem;color:rgba(255,255,255,0.35)">demo@crypdash.com</p>
+                            <p id="dropdownName"  style="font-weight:600;color:#fff;font-size:0.875rem">Guest</p>
+                            <p id="dropdownEmail" style="font-size:0.75rem;color:rgba(255,255,255,0.35)">—</p>
                         </div>
-                        <button class="dropdown-item" onclick="handleLogout()">
+                        <!-- Sign In item (guest) -->
+                        <button class="dropdown-item" id="dropdownSignIn" onclick="showAuth(false)" style="display:none">
+                            <i class="ph ph-sign-in"></i> Sign In
+                        </button>
+                        <!-- Sign Out item (logged in) -->
+                        <button class="dropdown-item" id="dropdownSignOut" onclick="handleLogout()" style="display:none">
                             <i class="ph ph-sign-out"></i> Sign Out
                         </button>
                     </div>
@@ -209,14 +248,32 @@
             </div>
         </header>
 
+        <!-- Mobile search bar (expands below header on mobile) -->
+        <div class="mobile-search-bar" id="mobileSearchBar">
+            <div class="mobile-search-inner" id="mobileSearchContainer">
+                <i class="ph ph-magnifying-glass" style="color:rgba(255,255,255,0.35);font-size:1rem"></i>
+                <input
+                    type="text"
+                    id="mobileSearchInput"
+                    class="mobile-search-input"
+                    placeholder="Search coins…"
+                    autocomplete="off"
+                >
+                <button onclick="toggleMobileSearch()" style="color:var(--text-muted);line-height:1">
+                    <i class="ph ph-x" style="font-size:1rem"></i>
+                </button>
+                <div id="mobileSearchResults" class="search-dropdown mobile-search-dropdown"></div>
+            </div>
+        </div>
+
         <!-- ── SCROLLABLE CONTENT ── -->
         <div class="scroll-area" id="mainScrollArea">
 
             <!-- Guest banner -->
-            <div id="guestBanner" class="guest-banner" style="display:none">
+            <div id="guestBanner" class="guest-banner">
                 <i class="ph ph-info"></i>
-                You&rsquo;re browsing as a guest. Your watchlist won&rsquo;t be saved.
-                <a onclick="showAuth()">Sign in to save it →</a>
+                <span>Browsing as guest — your watchlist won't be saved.</span>
+                <a onclick="showAuth(true)">Sign in to save →</a>
             </div>
 
             <!-- ROW 1 -->
@@ -257,10 +314,15 @@
                 <div class="glass-card p-6 flex flex-col">
                     <h3 class="section-title" style="font-size:1.1rem;color:#fff;margin-bottom:4px">Portfolio Value</h3>
                     <div class="portfolio-value">$0<span class="portfolio-cents">.00</span></div>
-                    <!-- <div class="portfolio-change">
-                        <i class="ph-bold ph-trend-up"></i> 0.0% ($0.0) Today
-                    </div> -->
                     <h3 class="watchlist-label">Your Watchlist</h3>
+
+                    <!-- Guest watchlist CTA -->
+                    <div id="watchlistGuestCta" class="watchlist-guest-cta" style="display:none">
+                        <i class="ph ph-lock" style="font-size:1.5rem;color:rgba(255,255,255,0.15)"></i>
+                        <p>Sign in to save favourites</p>
+                        <button class="wl-signin-btn" onclick="showAuth(true)">Sign In</button>
+                    </div>
+
                     <div class="watchlist-scroll" id="watchlistContainer">
                         <div id="emptyWatchlistMsg" class="empty-watchlist">
                             <i class="ph ph-star" style="font-size:2rem;color:rgba(255,255,255,0.15)"></i>
@@ -285,8 +347,8 @@
                                 <th>Asset</th>
                                 <th style="text-align:right">Price</th>
                                 <th style="text-align:right">24h Change</th>
-                                <th style="text-align:right">24h Volume</th>
-                                <th style="text-align:right">Market Cap</th>
+                                <th style="text-align:right" class="col-hide-sm">24h Volume</th>
+                                <th style="text-align:right" class="col-hide-sm">Market Cap</th>
                             </tr>
                         </thead>
                         <tbody id="marketTableBody">
@@ -304,6 +366,9 @@
         </div><!-- /scroll-area -->
     </main>
 </div><!-- /appShell -->
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
 
 <script src="js/app.js"></script>
 </body>
