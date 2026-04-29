@@ -157,6 +157,20 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 }
 
 .logo-text { font-family: 'Syne', sans-serif; font-weight: 800; }
+.brand-mark {
+    width: 28px;
+    height: 28px;
+    display: block;
+    flex-shrink: 0;
+}
+.brand-mark-sm {
+    width: 22px;
+    height: 22px;
+}
+.brand-mark-lg {
+    width: 34px;
+    height: 34px;
+}
 
 /* Tab switcher */
 .auth-tabs {
@@ -831,9 +845,15 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     letter-spacing: -0.02em;
     color: #fff;
     margin-top: 8px;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.35rem;
 }
 .portfolio-cents { font-size: 1.5rem; }
+.portfolio-summary {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    min-height: 18px;
+    margin-bottom: 1.25rem;
+}
 
 /* ── Watchlist panel ────────────────────────────────────────── */
 .watchlist-label {

@@ -46,7 +46,39 @@ const MOCK = [
 // ════════════════════════════════════════════════════════════
 // UTILITY
 // ════════════════════════════════════════════════════════════
+function toNumber(value, fallback = 0) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+}
+
+function getCoinImage(coin) {
+    return coin?.image || 'assets/logo.svg';
+}
+
+function getCoinChangePct(coin) {
+    return toNumber(coin?.price_change_percentage_24h, 0);
+}
+
+function normalizeCoin(coin = {}, idx = 0) {
+    return {
+        ...coin,
+        id: coin.id || `coin-${idx}`,
+        symbol: (coin.symbol || '---').toLowerCase(),
+        name: coin.name || 'Unknown Coin',
+        image: getCoinImage(coin),
+        current_price: toNumber(coin.current_price, 0),
+        price_change_percentage_24h: getCoinChangePct(coin),
+        total_volume: toNumber(coin.total_volume, 0),
+        market_cap: toNumber(coin.market_cap, 0),
+    };
+}
+
+function normalizeMarketData(coins = []) {
+    return coins.filter(Boolean).map(normalizeCoin);
+}
+
 function fmtCurrency(v) {
+    v = toNumber(v, 0);
     if (v >= 1e12) return '$' + (v/1e12).toFixed(2) + 'T';
     if (v >= 1e9)  return '$' + (v/1e9).toFixed(2)  + 'B';
     if (v >= 1e6)  return '$' + (v/1e6).toFixed(2)  + 'M';
@@ -55,12 +87,14 @@ function fmtCurrency(v) {
 
 function fmtPrice(v) {
     if (v === undefined || v === null) return '—';
+    v = toNumber(v, 0);
     if (v < 0.001)  return '$' + v.toFixed(8);
     if (v < 1)      return '$' + v.toFixed(6);
     return new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 }).format(v);
 }
 
 function pctBadge(v, justify='end') {
+    v = toNumber(v, 0);
     const up   = v >= 0;
     const cls  = up ? 'pct-up' : 'pct-down';
     const icon = up ? 'ph-trend-up' : 'ph-trend-down';
@@ -164,8 +198,7 @@ function loginSuccess(user) {
 
     closeAuth();
     updateHeaderUI();
-    renderMarketTable();
-    renderWatchlist();
+    hydrateDashboard(watchlist[0] || activeCoin?.id);
     showToast(`Welcome back, ${user.name.split(' ')[0]}! 👋`);
 }
 
@@ -177,8 +210,7 @@ function handleLogout() {
     watchlist   = [];
     document.getElementById('userDropdown').classList.remove('open');
     updateHeaderUI();
-    renderMarketTable();
-    renderWatchlist();
+    hydrateDashboard(marketData[0]?.id);
     showToast('Signed out. Browsing as guest.');
 }
 
@@ -305,6 +337,59 @@ function saveWatchlist() {
     localStorage.setItem(watchKey(), JSON.stringify(watchlist));
 }
 
+function getActiveOrFallbackCoin(preferredCoinId = null) {
+    if (marketData.length === 0) return null;
+
+    const candidates = [
+        preferredCoinId,
+        activeCoin?.id,
+        watchlist.find(id => marketData.some(coin => coin.id === id)),
+        marketData[0]?.id,
+    ].filter(Boolean);
+
+    for (const coinId of candidates) {
+        const match = marketData.find(coin => coin.id === coinId);
+        if (match) return match;
+    }
+    return marketData[0] || null;
+}
+
+function renderPortfolioValue() {
+    const valueEl   = document.getElementById('portfolioValue');
+    const summaryEl = document.getElementById('portfolioSummary');
+    if (!valueEl || !summaryEl) return;
+
+    if (isGuest) {
+        valueEl.innerHTML = '$0<span class="portfolio-cents">.00</span>';
+        summaryEl.textContent = 'Sign in to track your saved coins.';
+        return;
+    }
+
+    const watchedCoins = marketData.filter(coin => watchlist.includes(coin.id));
+    const totalValue   = watchedCoins.reduce((sum, coin) => sum + toNumber(coin.current_price, 0), 0);
+    const formatted    = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(totalValue);
+    const [whole, cents = '00'] = formatted.split('.');
+
+    valueEl.innerHTML = `${whole}<span class="portfolio-cents">.${cents}</span>`;
+    summaryEl.textContent = watchedCoins.length
+        ? `${watchedCoins.length} saved coin${watchedCoins.length === 1 ? '' : 's'} in your watchlist.`
+        : 'Add coins from the market table to build your portfolio.';
+}
+
+function hydrateDashboard(preferredCoinId = null) {
+    renderMarketTable();
+    renderWatchlist();
+    renderPortfolioValue();
+
+    const nextCoin = getActiveOrFallbackCoin(preferredCoinId);
+    if (nextCoin) updateMainChartUI(nextCoin);
+}
+
 function toggleWatchlist(coinId) {
     // Guests must sign in first
     if (isGuest) {
@@ -322,8 +407,7 @@ function toggleWatchlist(coinId) {
         showToast(`Added ${coin ? coin.name : coinId} to watchlist ⭐`);
     }
     saveWatchlist();
-    renderMarketTable();
-    renderWatchlist();
+    hydrateDashboard(idx > -1 ? activeCoin?.id : coinId);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -442,18 +526,20 @@ function updateChartData(coin, tf) {
 // MAIN CHART HEADER
 // ════════════════════════════════════════════════════════════
 function updateMainChartUI(coin) {
+    if (!coin) return;
     activeCoin = coin;
     document.getElementById('mainChartName').textContent  = coin.name;
     document.getElementById('mainChartSymbol').textContent = coin.symbol.toUpperCase();
-    document.getElementById('mainChartIcon').src          = coin.image;
+    document.getElementById('mainChartIcon').src          = getCoinImage(coin);
     document.getElementById('mainChartPrice').textContent = fmtPrice(coin.current_price);
 
-    const up  = coin.price_change_percentage_24h >= 0;
+    const pct = getCoinChangePct(coin);
+    const up  = pct >= 0;
     const el  = document.getElementById('mainChartChange');
     el.innerHTML = `
         <span class="${up?'pct-up':'pct-down'}" style="font-weight:700">
             <i class="ph-bold ${up?'ph-trend-up':'ph-trend-down'}"></i>
-            ${Math.abs(coin.price_change_percentage_24h).toFixed(2)}%
+            ${Math.abs(pct).toFixed(2)}%
         </span>
         <span style="color:rgba(255,255,255,0.35);margin-left:8px;font-weight:400;font-size:0.8rem">Past 24h</span>
     `;
@@ -466,6 +552,18 @@ function updateMainChartUI(coin) {
 function renderMarketTable() {
     const tbody = document.getElementById('marketTableBody');
     tbody.innerHTML = '';
+
+    if (marketData.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="table-loading">
+                    <i class="ph ph-warning-circle" style="font-size:1.5rem;color:var(--accent)"></i>
+                    <p>No market data available right now.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
 
     marketData.forEach((coin, idx) => {
         const watched = !isGuest && watchlist.includes(coin.id);
@@ -492,7 +590,7 @@ function renderMarketTable() {
             <td>
                 <div style="display:flex;align-items:center;gap:12px">
                     <span style="color:rgba(255,255,255,0.2);font-size:0.75rem;width:20px;text-align:right">${idx+1}</span>
-                    <img src="${coin.image}" alt="${coin.name}" style="width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,0.08)">
+                    <img src="${getCoinImage(coin)}" alt="${coin.name}" style="width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,0.08)">
                     <div>
                         <div class="coin-name-text">${coin.name}</div>
                         <div class="coin-sym-text">${coin.symbol}</div>
@@ -500,7 +598,7 @@ function renderMarketTable() {
                 </div>
             </td>
             <td style="text-align:right;font-weight:600;color:#fff">${fmtPrice(coin.current_price)}</td>
-            <td style="text-align:right">${pctBadge(coin.price_change_percentage_24h)}</td>
+            <td style="text-align:right">${pctBadge(getCoinChangePct(coin))}</td>
             <td style="text-align:right;color:rgba(255,255,255,0.4)" class="col-hide-sm">${fmtCurrency(coin.total_volume)}</td>
             <td style="text-align:right;color:rgba(255,255,255,0.4)" class="col-hide-sm">${fmtCurrency(coin.market_cap)}</td>
         `;
@@ -549,12 +647,13 @@ function renderWatchlist() {
     emptyMsg.style.display = 'none';
 
     watched.forEach(coin => {
-        const up  = coin.price_change_percentage_24h >= 0;
+        const pct = getCoinChangePct(coin);
+        const up  = pct >= 0;
         const div = document.createElement('div');
         div.className = 'watchlist-item';
         div.innerHTML = `
             <div style="display:flex;align-items:center;gap:10px">
-                <img src="${coin.image}" alt="${coin.name}" style="width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,0.08)">
+                <img src="${getCoinImage(coin)}" alt="${coin.name}" style="width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,0.08)">
                 <div>
                     <div class="wi-sym">${coin.symbol.toUpperCase()}</div>
                     <div class="wi-name">${coin.name}</div>
@@ -564,7 +663,7 @@ function renderWatchlist() {
                 <div class="wi-price">${fmtPrice(coin.current_price)}</div>
                 <div class="${up?'badge-up':'badge-down'}" style="justify-content:flex-end;margin-top:4px">
                     <i class="ph-bold ${up?'ph-trend-up':'ph-trend-down'}"></i>
-                    ${up?'+':''}${coin.price_change_percentage_24h.toFixed(2)}%
+                    ${up?'+':''}${pct.toFixed(2)}%
                 </div>
             </div>
         `;
@@ -597,12 +696,13 @@ function renderSearchResults(query, dropdownId) {
 
     dropdown.innerHTML = '';
     hits.forEach(coin => {
-        const up  = coin.price_change_percentage_24h >= 0;
+        const pct = getCoinChangePct(coin);
+        const up  = pct >= 0;
         const div = document.createElement('div');
         div.className = 'search-result-item';
         div.innerHTML = `
             <div class="sri-left">
-                <img src="${coin.image}" alt="${coin.name}" style="width:26px;height:26px;border-radius:50%">
+                <img src="${getCoinImage(coin)}" alt="${coin.name}" style="width:26px;height:26px;border-radius:50%">
                 <div>
                     <span class="sri-name">${coin.name}</span>
                     <span class="sri-sym">${coin.symbol}</span>
@@ -611,7 +711,7 @@ function renderSearchResults(query, dropdownId) {
             <div class="sri-right">
                 <div class="sri-price">${fmtPrice(coin.current_price)}</div>
                 <div class="${up?'badge-up':'badge-down'}" style="justify-content:flex-end;margin-top:2px">
-                    ${up?'+':''}${coin.price_change_percentage_24h.toFixed(2)}%
+                    ${up?'+':''}${pct.toFixed(2)}%
                 </div>
             </div>
         `;
@@ -693,27 +793,24 @@ function initClickOutside() {
 // DATA FETCH
 // ════════════════════════════════════════════════════════════
 async function fetchMarketData() {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6500);
+
     try {
-        const res = await fetch(API_URL);
+        const res = await fetch(API_URL, { signal: controller.signal });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         if (!Array.isArray(json) || json.length === 0) throw new Error('Empty response');
-        marketData = json;
+        marketData = normalizeMarketData(json);
         console.log(`✅ Live data: ${marketData.length} coins from CoinGecko`);
     } catch (err) {
         console.warn('⚠️ CoinGecko unavailable, using mock data.', err.message);
-        marketData = MOCK;
+        marketData = normalizeMarketData(MOCK);
+    } finally {
+        clearTimeout(timeoutId);
     }
 
-    renderMarketTable();
-    renderWatchlist();
-
-    if (marketData.length > 0 && !activeCoin) {
-        updateMainChartUI(marketData[0]);
-    } else if (activeCoin) {
-        const refreshed = marketData.find(c => c.id === activeCoin.id);
-        if (refreshed) updateMainChartUI(refreshed);
-    }
+    hydrateDashboard(activeCoin?.id);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -744,10 +841,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Try to restore session; otherwise auto-guest
     tryAutoLogin();
 
-    // Update watchlist CTA visibility
-    const wlCta = document.getElementById('watchlistGuestCta');
-    if (wlCta) wlCta.style.display = isGuest ? 'flex' : 'none';
+    // Paint immediately so the dashboard is never blank while live data loads
+    marketData = normalizeMarketData(MOCK);
+    hydrateDashboard();
 
-    // Fetch data
+    // Refresh with live data in the background
     fetchMarketData();
 });
