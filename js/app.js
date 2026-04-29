@@ -201,6 +201,21 @@ function saveLocalWatchlist() {
     localStorage.setItem(watchKey(), JSON.stringify(watchlist));
 }
 
+function clearCachedSession() {
+    localStorage.removeItem(SESSION_KEY);
+}
+
+function cacheSession(user, cachedWatchlist = watchlist) {
+    if (!user?.id) return;
+
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+    }));
+    localStorage.setItem(watchKey(user.id), JSON.stringify(cachedWatchlist));
+}
+
 function tryLocalAutoLogin() {
     try {
         const stored = localStorage.getItem(SESSION_KEY);
@@ -357,6 +372,7 @@ function applySignedInSession(user, nextWatchlist = [], { announce = false } = {
     currentUser = user;
     isGuest = false;
     watchlist = nextWatchlist;
+    cacheSession(user, nextWatchlist);
     closeAuth();
     updateHeaderUI();
     hydrateDashboard(watchlist[0] || activeCoin?.id);
@@ -382,6 +398,20 @@ async function restoreCloudSession(user, options = {}) {
     }
 
     applySignedInSession(user, cloudWatchlist, options);
+}
+
+function tryCachedCloudSession() {
+    try {
+        const stored = localStorage.getItem(SESSION_KEY);
+        if (!stored) return;
+
+        const cachedUser = JSON.parse(stored);
+        if (!cachedUser?.id) return;
+
+        applySignedInSession(cachedUser, loadLocalWatchlist(cachedUser.id));
+    } catch {
+        // Ignore malformed cached session data.
+    }
 }
 
 async function handleLogin(e) {
@@ -476,6 +506,7 @@ async function handleLogout() {
         try {
             suppressNextAuthEvent = true;
             await signOutCloudAccount();
+            clearCachedSession();
             activateGuestSession({ announce: true });
         } catch (error) {
             console.error('Unable to sign out from Firebase', error);
@@ -484,7 +515,7 @@ async function handleLogout() {
         return;
     }
 
-    localStorage.removeItem(SESSION_KEY);
+    clearCachedSession();
     activateGuestSession({ announce: true });
 }
 
@@ -493,6 +524,8 @@ async function initAuthSession() {
         tryLocalAutoLogin();
         return;
     }
+
+    tryCachedCloudSession();
 
     subscribeToAuthState(async user => {
         if (suppressNextAuthEvent) {
@@ -505,6 +538,7 @@ async function initAuthSession() {
             return;
         }
 
+        clearCachedSession();
         activateGuestSession();
     });
 }

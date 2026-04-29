@@ -1,11 +1,11 @@
 export const firebaseConfig = {
-    apiKey: 'YOUR_API_KEY',
-    authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    appId: 'YOUR_APP_ID',
-    measurementId: 'YOUR_MEASUREMENT_ID',
+    apiKey: "AIzaSyB0L1q_Y-K4E8z_te42yy09vaIlNGA4k_k",
+    authDomain: 'crypdash-9630a.firebaseapp.com',
+    projectId: "crypdash-9630a",
+    storageBucket: "crypdash-9630a.firebasestorage.app",
+    messagingSenderId: "935974998862",
+    appId: "1:935974998862:web:ae58a0e9903730029c441f",
+    measurementId: "G-5DW6JDX0ZK"
 };
 
 export function hasFirebaseConfig(config = firebaseConfig) {
