@@ -1,133 +1,139 @@
-# CrypDash — Crypto Dashboard
+# CrypDash — Cloudflare Pages + Firebase Ready
 
-A dark-themed, responsive cryptocurrency dashboard that displays live market data, an interactive price chart, per-user watchlists, and a local auth system — all in a single HTML/CSS/JS stack with no build step required.
+CrypDash is a dark-themed crypto dashboard that now supports two modes:
 
----
+- `Cloud sync mode`: Firebase Authentication + Cloud Firestore power user accounts and synced watchlists.
+- `Local preview mode`: if Firebase is still unconfigured, the app falls back to browser-only auth/watchlists so you can develop and demo for free.
 
-## Project Structure
+The project is designed to deploy as a static site on Cloudflare Pages with no build step.
 
-```
-crypdash/
-├── index.html      # App shell, layout, auth modal, market table markup
+## Project structure
+
+```text
+.
+├── assets/
+│   └── logo.svg
 ├── css/
-│   └── style.css   # Full design system — variables, glass cards, auth, responsive
-└── js/
-    └── app.js      # All runtime logic — auth, chart, watchlist, search, data fetch
+│   └── style.css
+├── firebase/
+│   └── firestore.rules
+├── js/
+│   ├── app.js
+│   ├── firebase-config.js
+│   └── firebase-service.js
+└── index.html
 ```
 
-> **Tip:** The project can also be shipped as a single self-contained `crypdash.html` with CSS and JS inlined, which works without any folder structure or local server.
+## What changed
 
----
+- Added a real brand asset and favicon.
+- Upgraded the app to ES modules.
+- Added a Firebase service layer for auth and synced watchlists.
+- Kept a local fallback so the site still works before you add Firebase credentials.
+- Kept the dashboard resilient by rendering fallback market data immediately, then refreshing live prices from CoinGecko.
 
 ## Features
 
-### Market Data
-- Fetches the top 50 coins by market cap from the [CoinGecko public API](https://www.coingecko.com/en/api) (`/coins/markets`).
-- Automatically falls back to built-in mock data (15 coins) if the API is unavailable or rate-limited.
-- Displays name, symbol, price, 24h change, 24h volume, and market cap in a sortable-ready table.
+### Market dashboard
 
-### Price Chart
-- Interactive Chart.js line chart with a red gradient fill.
-- Defaults to Bitcoin on load; updates when any row or watchlist item is clicked.
-- Five timeframe buttons: **1H · 1D · 1W · 1M · 1Y** — each generates mock historical data at the appropriate volatility and label density.
-- Gradient is recreated on every render via a `beforeDraw` plugin to stay correct across responsive resizes.
+- Fetches the top 50 coins by market cap from the CoinGecko public API.
+- Falls back to built-in mock data if the API is unavailable or rate-limited.
+- Shows price, 24h change, 24h volume, market cap, and a focus chart.
 
-### Watchlist
-- Logged-in users can star/unstar any coin from the market table.
-- Watchlist is persisted to `localStorage` keyed per user (`crypdash_wl_<userId>`).
-- Guest users see a lock icon on the star and are prompted to sign in.
-- Watchlist panel shows coin logo, symbol, name, current price, and 24h badge; clicking any item opens it in the chart.
+### Auth and watchlists
 
-### Authentication
-- Client-side only — users are stored in `localStorage` (`crypdash_users`).
-- Session is persisted in `localStorage` (`crypdash_session`) and restored on page load.
-- Supports **Sign Up** (name, email, password ≥ 8 chars) and **Sign In**.
-- A built-in demo account is always available: `demo@crypdash.com` / `demo1234`.
-- Auth is a dismissible modal overlay — the app remains fully visible and browsable as a guest.
+- `Firebase mode`: email/password sign-up, sign-in, sign-out, and cloud-synced watchlists.
+- `Local preview mode`: demo-friendly account storage in `localStorage`.
+- Watchlist-driven portfolio summary on the right-hand panel.
 
-### Search
-- Debounced (300 ms) live search across coin name and symbol.
-- Desktop: inline dropdown in the header search bar.
-- Mobile: toggled full-width search bar below the header with its own dropdown.
+### Deployment target
 
-### Responsive Layout
-- **≥ 1024 px** — full sidebar + header username visible.
-- **768 – 1023 px** — narrower sidebar, condensed search.
-- **< 768 px** — off-canvas sidebar (hamburger toggle), mobile search bar, volume/market-cap columns hidden.
+- Static HTML/CSS/JS app.
+- No bundler required.
+- Friendly for Cloudflare Pages free hosting.
 
-### Toast Notifications
-- Lightweight slide-up toast confirms watchlist additions and removals, and login/logout events.
+## Local development
 
----
+Serve the project from a local web server:
 
-## Getting Started
-
-No build tools or dependencies to install.
-
-**Option A — separate files (recommended for development)**
-
-```
-project/
-├── index.html
-├── css/style.css
-└── js/app.js
+```bash
+python3 -m http.server 4173
 ```
 
-Open `index.html` via a local server (e.g. VS Code Live Server, or `npx serve .`). Opening directly as `file://` may block the CoinGecko API call due to browser CORS/mixed-content policies; the app will fall back to mock data automatically.
+Then open [http://127.0.0.1:4173](http://127.0.0.1:4173).
 
-**Option B — single file**
+## Enable Firebase cloud sync
 
-Use the provided `crypdash.html` (CSS and JS inlined). Open directly in any browser — no server needed, mock data always available.
+### 1. Create a Firebase project
 
----
+Create a Firebase project and register a web app in the Firebase console.
 
-## Configuration
+Official setup docs:
+- [Add Firebase to your JavaScript project](https://firebase.google.com/docs/web/setup)
+- [Get started with Firebase Authentication on websites](https://firebase.google.com/docs/auth/web/start)
 
-All tunable constants are at the top of `app.js`:
+### 2. Enable Firebase Authentication
 
-| Constant | Default | Description |
-|---|---|---|
-| `API_URL` | CoinGecko `/coins/markets` | Live data endpoint |
-| `USERS_KEY` | `crypdash_users` | localStorage key for registered users |
-| `SESSION_KEY` | `crypdash_session` | localStorage key for active session |
-| `WATCH_PREFIX` | `crypdash_wl_` | Prefix for per-user watchlist keys |
-| `ACCENT` | `#ff3344` | Chart line and gradient colour |
-| `DEMO_ACCOUNT` | `demo@crypdash.com` | Hard-coded demo credentials |
+In Firebase Authentication:
 
----
+- Enable `Email/Password`
 
-## Tech Stack
+Official docs:
+- [Authenticate with Firebase using Password-Based Accounts](https://firebase.google.com/docs/auth/web/password-auth)
 
-| Layer | Library / Approach |
-|---|---|
-| Styling | Custom CSS with CSS variables + [Tailwind CDN](https://tailwindcss.com) utility classes |
-| Icons | [Phosphor Icons](https://phosphoricons.com) (web CDN) |
-| Chart | [Chart.js](https://www.chartjs.org) (CDN, latest) |
-| Fonts | [Syne](https://fonts.google.com/specimen/Syne) (headings) + [DM Sans](https://fonts.google.com/specimen/DM+Sans) (body) via Google Fonts |
-| Data | CoinGecko Free API — no API key required |
-| Storage | Browser `localStorage` — no backend |
+### 3. Create Firestore
 
----
+Create a Cloud Firestore database in production or test mode, then apply the rules from [firebase/firestore.rules](firebase/firestore.rules).
 
-## Known Limitations
+Official docs:
+- [Add data to Cloud Firestore](https://firebase.google.com/docs/firestore/manage-data/add-data)
 
-- **Auth is not secure** — passwords are stored in plain text in `localStorage`. This is intentional for a front-end demo; do not use in production without a real backend.
-- **Chart data is mocked** — historical price series are randomly generated from the current price. Only the current price and 24h change are live.
-- **CoinGecko rate limits** — the free tier allows ~10–30 requests/minute. Exceeding this returns a 429 and the app falls back to mock data.
-- **No data refresh** — prices are fetched once on load and not polled. Reload the page for updated prices.
+### 4. Paste your web config
 
----
+Open `js/firebase-config.js` and replace the placeholder values:
 
-## Customisation
-
-**Brand colours** — edit the two CSS variables in `style.css`:
-```css
-:root {
-    --accent:     #ff3344;   /* primary — chart, active states, buttons */
-    --accent-alt: #ccff00;   /* secondary — watchlist stars, highlights */
-}
+```js
+export const firebaseConfig = {
+  apiKey: 'YOUR_API_KEY',
+  authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
+  projectId: 'YOUR_PROJECT_ID',
+  storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
+  messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+  appId: 'YOUR_APP_ID',
+  measurementId: 'YOUR_MEASUREMENT_ID',
+};
 ```
 
-**Mock coins** — add or edit entries in the `MOCK` array in `app.js`. Each entry needs: `id`, `symbol`, `name`, `image`, `current_price`, `price_change_percentage_24h`, `total_volume`, `market_cap`.
+If placeholders remain, CrypDash stays in local preview mode automatically.
 
-**Timeframes** — extend the `tfConfig()` function in `app.js` to add new timeframe buttons (also add the corresponding `<button class="tf-btn">` in `index.html`).
+## Deploy to Cloudflare Pages
+
+This repo is already structured for Cloudflare Pages static hosting.
+
+Use these settings:
+
+- `Framework preset`: `None`
+- `Build command`: leave blank
+- `Build output directory`: `/`
+
+Cloudflare Pages docs:
+- [Cloudflare Pages overview](https://developers.cloudflare.com/pages/)
+- [Cloudflare Pages free limits](https://pages.cloudflare.com/)
+
+## Firebase data model
+
+The app stores watchlists in Firestore like this:
+
+```text
+watchlists/{userId}
+  coins: string[]
+  displayName: string
+  email: string
+  updatedAt: timestamp
+```
+
+## Notes
+
+- Firebase config values for web apps are project identifiers, not secrets.
+- CoinGecko historical chart data is still mocked; only current market snapshot data is live.
+- If you want full production hardening later, the next step would be moving from CDN imports to a bundled setup like Vite.

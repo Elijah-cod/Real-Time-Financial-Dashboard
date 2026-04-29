@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CrypDash — Crypto Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -29,7 +30,7 @@
         </button>
 
         <div class="auth-logo">
-            <i class="ph-fill ph-hexagon" style="font-size:2rem;color:var(--accent)"></i>
+            <img src="assets/logo.svg" alt="CrypDash logo" class="brand-mark brand-mark-lg">
             <span class="logo-text" style="font-size:1.4rem;color:#fff">CrypDash</span>
         </div>
 
@@ -63,7 +64,7 @@
                 </div>
             </div>
 
-            <p class="auth-hint">Demo: <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="b8dcddd5d7f8dbcac1c8dcd9cbd096dbd7d5">[email&#160;protected]</a></strong> / <strong>demo1234</strong></p>
+            <p class="auth-hint" id="authHint">Preview mode stores accounts in this browser. Add Firebase config to enable cloud sync.</p>
             <p class="auth-error" id="loginError"></p>
 
             <button type="submit" class="auth-submit-btn">
@@ -121,7 +122,7 @@
     <aside class="sidebar" id="sidebar">
         <div>
             <div class="sidebar-logo">
-                <i class="ph-fill ph-hexagon" style="font-size:1.8rem;color:var(--accent)"></i>
+                <img src="assets/logo.svg" alt="CrypDash logo" class="brand-mark">
                 <span class="logo-text text-white" style="font-size:1.2rem">CrypDash</span>
                 <!-- Close button for mobile -->
                 <button class="sidebar-close-btn" onclick="closeMobileSidebar()">
@@ -178,7 +179,7 @@
 
                 <!-- Mobile logo (hidden on desktop) -->
                 <div class="mobile-logo">
-                    <i class="ph-fill ph-hexagon" style="color:var(--accent);font-size:1.4rem"></i>
+                    <img src="assets/logo.svg" alt="CrypDash logo" class="brand-mark brand-mark-sm">
                     <span class="logo-text" style="color:#fff;font-size:1rem">CrypDash</span>
                 </div>
 
@@ -272,7 +273,7 @@
             <!-- Guest banner -->
             <div id="guestBanner" class="guest-banner">
                 <i class="ph ph-info"></i>
-                <span>Browsing as guest — your watchlist won't be saved.</span>
+                <span id="guestBannerCopy">Browsing as guest — local preview mode won't sync between devices.</span>
                 <a onclick="showAuth(true)">Sign in to save →</a>
             </div>
 
@@ -313,13 +314,14 @@
                 <!-- Portfolio + Watchlist -->
                 <div class="glass-card p-6 flex flex-col">
                     <h3 class="section-title" style="font-size:1.1rem;color:#fff;margin-bottom:4px">Portfolio Value</h3>
-                    <div class="portfolio-value">$0<span class="portfolio-cents">.00</span></div>
+                    <div id="portfolioValue" class="portfolio-value">$0<span class="portfolio-cents">.00</span></div>
+                    <p id="portfolioSummary" class="portfolio-summary">Sign in to track your saved coins.</p>
                     <h3 class="watchlist-label">Your Watchlist</h3>
 
                     <!-- Guest watchlist CTA -->
                     <div id="watchlistGuestCta" class="watchlist-guest-cta" style="display:none">
                         <i class="ph ph-lock" style="font-size:1.5rem;color:rgba(255,255,255,0.15)"></i>
-                        <p>Sign in to save favourites</p>
+                        <p id="watchlistGuestText">Sign in to save favourites locally</p>
                         <button class="wl-signin-btn" onclick="showAuth(true)">Sign In</button>
                     </div>
 
@@ -370,6 +372,6 @@
 <!-- Toast notification -->
 <div id="toast" class="toast"></div>
 
-<script src="js/app.js"></script>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
