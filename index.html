@@ -64,7 +64,7 @@
                 </div>
             </div>
 
-            <p class="auth-hint">Demo: <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="b8dcddd5d7f8dbcac1c8dcd9cbd096dbd7d5">[email&#160;protected]</a></strong> / <strong>demo1234</strong></p>
+            <p class="auth-hint" id="authHint">Preview mode stores accounts in this browser. Add Firebase config to enable cloud sync.</p>
             <p class="auth-error" id="loginError"></p>
 
             <button type="submit" class="auth-submit-btn">
@@ -273,7 +273,7 @@
             <!-- Guest banner -->
             <div id="guestBanner" class="guest-banner">
                 <i class="ph ph-info"></i>
-                <span>Browsing as guest — your watchlist won't be saved.</span>
+                <span id="guestBannerCopy">Browsing as guest — local preview mode won't sync between devices.</span>
                 <a onclick="showAuth(true)">Sign in to save →</a>
             </div>
 
@@ -321,7 +321,7 @@
                     <!-- Guest watchlist CTA -->
                     <div id="watchlistGuestCta" class="watchlist-guest-cta" style="display:none">
                         <i class="ph ph-lock" style="font-size:1.5rem;color:rgba(255,255,255,0.15)"></i>
-                        <p>Sign in to save favourites</p>
+                        <p id="watchlistGuestText">Sign in to save favourites locally</p>
                         <button class="wl-signin-btn" onclick="showAuth(true)">Sign In</button>
                     </div>
 
@@ -372,6 +372,6 @@
 <!-- Toast notification -->
 <div id="toast" class="toast"></div>
 
-<script src="js/app.js"></script>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
