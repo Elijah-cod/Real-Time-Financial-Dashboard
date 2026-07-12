@@ -1,11 +1,13 @@
-# CrypDash — Cloudflare Pages + Firebase Ready
+# CrypDash
 
-CrypDash is a dark-themed crypto dashboard that now supports two modes:
+CrypDash is a cryptocurrency market dashboard with live CoinGecko snapshots, watchlists, and two persistence modes:
 
 - `Cloud sync mode`: Firebase Authentication + Cloud Firestore power user accounts and synced watchlists.
 - `Local preview mode`: if Firebase is still unconfigured, the app falls back to browser-only auth/watchlists so you can develop and demo for free.
 
 The project is designed to deploy as a static site on Cloudflare Pages with no build step.
+
+[Live demo](https://real-time-financial-dashboard.vercel.app) · [Repository](https://github.com/Elijah-cod/Real-Time-Financial-Dashboard)
 
 ## Project structure
 
@@ -24,13 +26,12 @@ The project is designed to deploy as a static site on Cloudflare Pages with no b
 └── index.html
 ```
 
-## What changed
+## Runtime behavior
 
-- Added a real brand asset and favicon.
-- Upgraded the app to ES modules.
-- Added a Firebase service layer for auth and synced watchlists.
-- Kept a local fallback so the site still works before you add Firebase credentials.
-- Kept the dashboard resilient by rendering fallback market data immediately, then refreshing live prices from CoinGecko.
+- ES modules separate application logic, Firebase configuration, and Firebase services.
+- The dashboard renders fallback market data immediately, then attempts to refresh the current market snapshot from CoinGecko.
+- Firebase mode uses email/password authentication and Firestore-backed watchlists.
+- Preview mode stores demo accounts and watchlists in `localStorage`.
 
 ## Features
 
@@ -136,4 +137,6 @@ watchlists/{userId}
 
 - Firebase config values for web apps are project identifiers, not secrets.
 - CoinGecko historical chart data is still mocked; only current market snapshot data is live.
+- CoinGecko availability and rate limits can cause the dashboard to remain on its bundled fallback snapshot.
+- CrypDash is a software demonstration and does not provide investment advice.
 - If you want full production hardening later, the next step would be moving from CDN imports to a bundled setup like Vite.
