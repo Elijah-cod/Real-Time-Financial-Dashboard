@@ -3,375 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CrypDash — Crypto Dashboard</title>
+    <meta name="theme-color" content="#0a0c12">
+    <meta name="description" content="CrypDash is a real-time crypto market, portfolio, and trading dashboard.">
+    <title>CrypDash | Trading &amp; Analytics</title>
     <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
-    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-
-<!-- ═══════════════════════════════════════════════════════════
-     AUTH OVERLAY  (modal — shown on demand, not on load)
-══════════════════════════════════════════════════════════════ -->
-<div id="authOverlay" class="auth-overlay" style="display:none" onclick="handleOverlayClick(event)">
-    <div class="auth-blob auth-blob-1"></div>
-    <div class="auth-blob auth-blob-2"></div>
-    <div class="auth-blob auth-blob-3"></div>
-
-    <div class="auth-card">
-        <!-- Close button — always visible since auth is always a modal now -->
-        <button class="auth-close-btn" id="authCloseBtn" onclick="closeAuth()" title="Continue as guest">
-            <i class="ph ph-x"></i>
-        </button>
-
-        <div class="auth-logo">
-            <img src="assets/logo.svg" alt="CrypDash logo" class="brand-mark brand-mark-lg">
-            <span class="logo-text" style="font-size:1.4rem;color:#fff">CrypDash</span>
-        </div>
-
-        <!-- Watchlist prompt (shown when guest tries to star) -->
-        <div class="auth-watchlist-prompt" id="authWatchlistPrompt" style="display:none">
-            <i class="ph-fill ph-star" style="color:var(--accent-alt);font-size:1.1rem"></i>
-            Sign in to save coins to your watchlist
-        </div>
-
-        <div class="auth-tabs">
-            <button class="auth-tab active" id="tabLogin"  onclick="switchTab('login')">Sign In</button>
-            <button class="auth-tab"        id="tabSignup" onclick="switchTab('signup')">Sign Up</button>
-        </div>
-
-        <!-- LOGIN -->
-        <form id="loginForm" class="auth-form" onsubmit="handleLogin(event)">
-            <p class="auth-subtitle">Welcome back. Sign in to your account.</p>
-
-            <div class="auth-field">
-                <label>Email</label>
-                <div class="auth-input-wrap">
-                    <i class="ph ph-envelope"></i>
-                    <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
-                </div>
-            </div>
-            <div class="auth-field">
-                <label>Password</label>
-                <div class="auth-input-wrap">
-                    <i class="ph ph-lock"></i>
-                    <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
-                </div>
-            </div>
-
-            <p class="auth-hint" id="authHint">Preview mode stores accounts in this browser. Add Firebase config to enable cloud sync.</p>
-            <p class="auth-error" id="loginError"></p>
-
-            <button type="submit" class="auth-submit-btn">
-                <span>Sign In</span><i class="ph-bold ph-arrow-right"></i>
-            </button>
-            <p class="auth-switch">No account? <a onclick="switchTab('signup')">Sign up free →</a></p>
-        </form>
-
-        <!-- SIGNUP -->
-        <form id="signupForm" class="auth-form" style="display:none" onsubmit="handleSignup(event)">
-            <p class="auth-subtitle">Create an account to track your portfolio.</p>
-
-            <div class="auth-field">
-                <label>Full Name</label>
-                <div class="auth-input-wrap">
-                    <i class="ph ph-user"></i>
-                    <input type="text" id="signupName" placeholder="John Doe" autocomplete="name">
-                </div>
-            </div>
-            <div class="auth-field">
-                <label>Email</label>
-                <div class="auth-input-wrap">
-                    <i class="ph ph-envelope"></i>
-                    <input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email">
-                </div>
-            </div>
-            <div class="auth-field">
-                <label>Password <span style="color:var(--text-muted);font-weight:400;font-size:0.75rem">(min 8 chars)</span></label>
-                <div class="auth-input-wrap">
-                    <i class="ph ph-lock"></i>
-                    <input type="password" id="signupPassword" placeholder="••••••••" minlength="8" autocomplete="new-password">
-                </div>
-            </div>
-
-            <p class="auth-error" id="signupError"></p>
-
-            <button type="submit" class="auth-submit-btn">
-                <span>Create Account</span><i class="ph-bold ph-arrow-right"></i>
-            </button>
-            <p class="auth-switch">Have an account? <a onclick="switchTab('login')">Sign in →</a></p>
-        </form>
+    <div class="ambient" aria-hidden="true">
+        <span class="ambient-red"></span>
+        <span class="ambient-gold"></span>
     </div>
-</div>
 
-
-<!-- ═══════════════════════════════════════════════════════════
-     MAIN APP SHELL
-══════════════════════════════════════════════════════════════ -->
-<div id="appShell" class="app-shell">
-
-    <!-- Mobile sidebar overlay backdrop -->
-    <div class="mobile-sidebar-overlay" id="mobileSidebarOverlay" onclick="closeMobileSidebar()"></div>
-
-    <!-- SIDEBAR -->
-    <aside class="sidebar" id="sidebar">
-        <div>
-            <div class="sidebar-logo">
-                <img src="assets/logo.svg" alt="CrypDash logo" class="brand-mark">
-                <span class="logo-text text-white" style="font-size:1.2rem">CrypDash</span>
-                <!-- Close button for mobile -->
-                <button class="sidebar-close-btn" onclick="closeMobileSidebar()">
-                    <i class="ph ph-x"></i>
-                </button>
+    <div id="authOverlay" class="modal-backdrop" hidden>
+        <section class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+            <button class="icon-button modal-close" type="button" data-action="close-auth" aria-label="Close sign in">
+                <i class="ph ph-x"></i>
+            </button>
+            <div class="brand auth-brand">
+                <img src="assets/logo.svg" alt="" class="brand-logo">
+                <span>CrypDash</span>
             </div>
-            <nav class="p-4 space-y-1 mt-4">
-                <a href="#" class="nav-link active flex items-center gap-3 px-4 py-3 rounded-xl">
-                    <i class="ph ph-squares-four text-xl"></i> Dashboard
+            <div id="authWatchlistPrompt" class="auth-prompt" hidden>
+                <i class="ph-fill ph-star"></i>
+                Sign in to sync your watchlist across devices.
+            </div>
+            <div class="auth-tabs" role="tablist">
+                <button id="tabLogin" class="auth-tab active" type="button" data-auth-tab="login">Sign in</button>
+                <button id="tabSignup" class="auth-tab" type="button" data-auth-tab="signup">Create account</button>
+            </div>
+            <form id="loginForm" class="auth-form">
+                <div class="modal-heading">
+                    <p class="eyebrow">Welcome back</p>
+                    <h2 id="authTitle">Continue to your portfolio</h2>
+                </div>
+                <label class="field">
+                    <span>Email address</span>
+                    <span class="field-input"><i class="ph ph-envelope"></i><input id="loginEmail" type="email" autocomplete="email" placeholder="you@example.com" required></span>
+                </label>
+                <label class="field">
+                    <span>Password</span>
+                    <span class="field-input"><i class="ph ph-lock-key"></i><input id="loginPassword" type="password" autocomplete="current-password" placeholder="8+ characters" required></span>
+                </label>
+                <p id="authHint" class="form-hint">Firebase cloud sync is ready.</p>
+                <p id="loginError" class="form-error" aria-live="polite"></p>
+                <button class="primary-button full-button" type="submit"><span>Sign in</span><i class="ph-bold ph-arrow-right"></i></button>
+            </form>
+            <form id="signupForm" class="auth-form" hidden>
+                <div class="modal-heading">
+                    <p class="eyebrow">Free account</p>
+                    <h2>Build your synced watchlist</h2>
+                </div>
+                <label class="field">
+                    <span>Full name</span>
+                    <span class="field-input"><i class="ph ph-user"></i><input id="signupName" type="text" autocomplete="name" placeholder="Your name" required></span>
+                </label>
+                <label class="field">
+                    <span>Email address</span>
+                    <span class="field-input"><i class="ph ph-envelope"></i><input id="signupEmail" type="email" autocomplete="email" placeholder="you@example.com" required></span>
+                </label>
+                <label class="field">
+                    <span>Password</span>
+                    <span class="field-input"><i class="ph ph-lock-key"></i><input id="signupPassword" type="password" autocomplete="new-password" minlength="8" placeholder="8+ characters" required></span>
+                </label>
+                <p id="signupError" class="form-error" aria-live="polite"></p>
+                <button class="primary-button full-button" type="submit"><span>Create free account</span><i class="ph-bold ph-arrow-right"></i></button>
+            </form>
+        </section>
+    </div>
+
+    <div class="app-shell">
+        <div id="sidebarScrim" class="sidebar-scrim" data-action="close-sidebar"></div>
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-top">
+                <a class="brand" href="#dashboard" data-view-link="dashboard" aria-label="CrypDash dashboard">
+                    <img src="assets/logo.svg" alt="" class="brand-logo">
+                    <span>CrypDash</span>
                 </a>
-                <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl">
-                    <i class="ph ph-chart-line-up text-xl"></i> Markets
-                </a>
-                <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl">
-                    <i class="ph ph-wallet text-xl"></i> Portfolio
-                </a>
-                <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl">
-                    <i class="ph ph-arrows-left-right text-xl"></i> Exchange
-                </a>
+                <button class="icon-button sidebar-close" type="button" data-action="close-sidebar" aria-label="Close menu"><i class="ph ph-x"></i></button>
+            </div>
+
+            <nav class="side-nav" aria-label="Primary navigation">
+                <button class="nav-item active" type="button" data-view-link="dashboard"><i class="ph ph-squares-four"></i><span>Dashboard</span></button>
+                <button class="nav-item" type="button" data-view-link="markets"><i class="ph ph-chart-bar"></i><span>Markets</span></button>
+                <button class="nav-item" type="button" data-view-link="portfolio"><i class="ph ph-chart-pie-slice"></i><span>Portfolio</span><span id="navWatchCount" class="nav-count">0</span></button>
+                <button class="nav-item" type="button" data-view-link="exchange"><i class="ph ph-arrows-left-right"></i><span>Exchange</span></button>
+                <button class="nav-item" type="button" data-view-link="history"><i class="ph ph-receipt"></i><span>History</span></button>
             </nav>
-        </div>
-        <div class="p-4">
-            <div class="upgrade-card p-4 rounded-2xl mb-2">
-                <h4 style="font-size:0.875rem;font-weight:700;color:#fff;margin-bottom:4px">Pro Plan</h4>
-                <p style="font-size:0.75rem;color:rgba(255,255,255,0.45);margin-bottom:1rem">
-                    Advanced charting &amp; unlimited alerts.
-                </p>
-                <button class="upgrade-btn w-full py-2 text-sm font-semibold rounded-xl">Upgrade Now</button>
+
+            <div class="sidebar-foot">
+                <div class="sync-card">
+                    <div class="sync-card-top"><span class="status-dot"></span><strong>Live market feed</strong></div>
+                    <p>CoinGecko prices with Firebase portfolio sync.</p>
+                </div>
+                <button class="nav-item" type="button" data-view-link="settings"><i class="ph ph-gear-six"></i><span>Settings</span></button>
             </div>
-            <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 mt-2 rounded-xl">
-                <i class="ph ph-gear text-xl"></i> Settings
-            </a>
-        </div>
-    </aside>
+        </aside>
 
-    <!-- MAIN -->
-    <main class="main-content">
-
-        <!-- Ambient blobs -->
-        <div class="blobs-container" aria-hidden="true">
-            <div class="blob blob-1"></div>
-            <div class="blob blob-2"></div>
-            <div class="blob blob-3"></div>
-        </div>
-
-        <!-- ── HEADER ── -->
-        <header class="main-header">
-
-            <!-- Left: hamburger (mobile) + search -->
-            <div class="header-left">
-                <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileSidebar()" aria-label="Open menu">
-                    <i class="ph ph-list"></i>
-                </button>
-
-                <!-- Mobile logo (hidden on desktop) -->
-                <div class="mobile-logo">
-                    <img src="assets/logo.svg" alt="CrypDash logo" class="brand-mark brand-mark-sm">
-                    <span class="logo-text" style="color:#fff;font-size:1rem">CrypDash</span>
-                </div>
-
-                <!-- Search -->
-                <div class="search-container" id="searchContainer">
-                    <i class="ph ph-magnifying-glass search-icon"></i>
-                    <input
-                        type="text"
-                        id="searchInput"
-                        class="search-input"
-                        placeholder="Search coins…"
-                        autocomplete="off"
-                    >
-                    <div id="searchResults" class="search-dropdown hidden"></div>
-                </div>
-            </div>
-
-            <!-- Right: bells + user -->
-            <div class="header-right">
-                <!-- Mobile search toggle -->
-                <button class="mobile-search-btn" id="mobileSearchBtn" onclick="toggleMobileSearch()" aria-label="Search">
-                    <i class="ph ph-magnifying-glass" style="font-size:1.3rem"></i>
-                </button>
-
-                <div class="header-icons">
-                    <button class="header-icon-btn" title="Notifications">
-                        <i class="ph ph-bell" style="font-size:1.4rem"></i>
-                        <span class="notif-dot"></span>
-                    </button>
-                    <button class="header-icon-btn title-hide" title="Help">
-                        <i class="ph ph-question" style="font-size:1.4rem"></i>
-                    </button>
-                </div>
-
-                <!-- Guest: Sign In CTA -->
-                <button id="headerSignInBtn" class="header-signin-btn" onclick="showAuth(false)" style="display:none">
-                    <i class="ph ph-sign-in"></i>
-                    <span>Sign In</span>
-                </button>
-
-                <!-- Logged-in: user menu -->
-                <div class="user-menu-wrap" id="userMenuWrap">
-                    <div class="user-trigger" id="userTrigger" onclick="toggleUserDropdown()">
-                        <div class="avatar" id="userAvatar">?</div>
-                        <div class="user-name-block">
-                            <p id="userDisplayName" class="user-name">Guest</p>
-                            <p id="userRoleLabel"   class="user-role">Browsing</p>
-                        </div>
-                        <i class="ph ph-caret-down" style="color:rgba(255,255,255,0.3);font-size:0.8rem"></i>
-                    </div>
-
-                    <div class="user-dropdown" id="userDropdown">
-                        <div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.08)">
-                            <p id="dropdownName"  style="font-weight:600;color:#fff;font-size:0.875rem">Guest</p>
-                            <p id="dropdownEmail" style="font-size:0.75rem;color:rgba(255,255,255,0.35)">—</p>
-                        </div>
-                        <!-- Sign In item (guest) -->
-                        <button class="dropdown-item" id="dropdownSignIn" onclick="showAuth(false)" style="display:none">
-                            <i class="ph ph-sign-in"></i> Sign In
-                        </button>
-                        <!-- Sign Out item (logged in) -->
-                        <button class="dropdown-item" id="dropdownSignOut" onclick="handleLogout()" style="display:none">
-                            <i class="ph ph-sign-out"></i> Sign Out
-                        </button>
+        <div class="workspace">
+            <header class="topbar">
+                <div class="topbar-title-group">
+                    <button class="icon-button menu-button" type="button" data-action="open-sidebar" aria-label="Open menu"><i class="ph ph-list"></i></button>
+                    <div class="mobile-brand"><img src="assets/logo.svg" alt=""><span>CrypDash</span></div>
+                    <div class="page-heading">
+                        <p class="eyebrow" id="pageEyebrow">Market intelligence</p>
+                        <h1 id="pageTitle">Trading &amp; Analytics Hub</h1>
                     </div>
                 </div>
-            </div>
-        </header>
 
-        <!-- Mobile search bar (expands below header on mobile) -->
-        <div class="mobile-search-bar" id="mobileSearchBar">
-            <div class="mobile-search-inner" id="mobileSearchContainer">
-                <i class="ph ph-magnifying-glass" style="color:rgba(255,255,255,0.35);font-size:1rem"></i>
-                <input
-                    type="text"
-                    id="mobileSearchInput"
-                    class="mobile-search-input"
-                    placeholder="Search coins…"
-                    autocomplete="off"
-                >
-                <button onclick="toggleMobileSearch()" style="color:var(--text-muted);line-height:1">
-                    <i class="ph ph-x" style="font-size:1rem"></i>
-                </button>
-                <div id="mobileSearchResults" class="search-dropdown mobile-search-dropdown hidden"></div>
-            </div>
-        </div>
+                <div class="topbar-actions">
+                    <div class="global-search" id="globalSearch">
+                        <i class="ph ph-magnifying-glass"></i>
+                        <input id="globalSearchInput" type="search" autocomplete="off" placeholder="Search coins..." aria-label="Search coins">
+                        <kbd>/</kbd>
+                        <div id="globalSearchResults" class="search-results" hidden></div>
+                    </div>
+                    <div class="health-chip"><span class="status-dot"></span><span>Market feed</span><strong>Online</strong></div>
+                    <button class="icon-button notification-button" type="button" aria-label="Notifications"><i class="ph ph-bell"></i><span></span></button>
+                    <button id="signInButton" class="primary-button compact-button" type="button" data-action="open-auth"><i class="ph ph-sign-in"></i><span>Sign in</span></button>
+                    <div id="userMenu" class="user-menu">
+                        <button id="userTrigger" class="user-trigger" type="button" data-action="toggle-user">
+                            <span id="userAvatar" class="avatar">G</span>
+                            <span class="user-copy"><strong id="userName">Guest</strong><small id="userRole">Ready to sync</small></span>
+                            <i class="ph ph-caret-down"></i>
+                        </button>
+                        <div id="userDropdown" class="user-dropdown" hidden>
+                            <div class="dropdown-account"><strong id="dropdownName">Guest</strong><span id="dropdownEmail">Not signed in</span></div>
+                            <button id="dropdownAuthAction" type="button" data-action="open-auth"><i class="ph ph-sign-in"></i><span>Sign in</span></button>
+                        </div>
+                    </div>
+                </div>
+            </header>
 
-        <!-- ── SCROLLABLE CONTENT ── -->
-        <div class="scroll-area" id="mainScrollArea">
+            <main id="mainContent" class="main-content">
+                <section class="app-view active" data-view="dashboard">
+                    <div id="guestBanner" class="guest-banner">
+                        <div><i class="ph ph-cloud-arrow-up"></i><span id="guestBannerCopy">Sign in to sync your watchlist across devices.</span></div>
+                        <button type="button" data-action="open-auth-watchlist">Connect portfolio <i class="ph ph-arrow-right"></i></button>
+                    </div>
 
-            <!-- Guest banner -->
-            <div id="guestBanner" class="guest-banner">
-                <i class="ph ph-info"></i>
-                <span id="guestBannerCopy">Browsing as guest — local preview mode won't sync between devices.</span>
-                <a onclick="showAuth(true)">Sign in to save →</a>
-            </div>
-
-            <!-- ROW 1 -->
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
-
-                <!-- Chart card -->
-                <div class="glass-card lg:col-span-3 p-6 flex flex-col">
-                    <div class="chart-header">
-                        <div class="flex items-center gap-4">
-                            <img id="mainChartIcon"
-                                 src="https://assets.coingecko.com/coins/images/1/large/bitcoin.png"
-                                 alt="coin" class="coin-chart-icon">
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <h2 class="section-title" id="mainChartName" style="font-size:1.5rem;font-weight:800;color:#fff">—</h2>
-                                    <span class="coin-badge" id="mainChartSymbol">—</span>
+                    <div class="dashboard-grid">
+                        <article class="panel chart-panel span-2">
+                            <div class="panel-header chart-panel-header">
+                                <div>
+                                    <p class="eyebrow">Multi-asset comparison</p>
+                                    <div class="asset-heading">
+                                        <img id="mainChartIcon" src="assets/logo.svg" alt="">
+                                        <div><h2 id="mainChartName">Bitcoin</h2><span id="mainChartSymbol">BTC / USD</span></div>
+                                        <div class="asset-price"><strong id="mainChartPrice">$0.00</strong><span id="mainChartChange">0.00%</span></div>
+                                    </div>
                                 </div>
-                                <div class="flex items-end gap-3 mt-1">
-                                    <span id="mainChartPrice" class="chart-price">—</span>
-                                    <span id="mainChartChange" class="chart-change"></span>
+                                <div class="timeframe-tabs" aria-label="Chart timeframe">
+                                    <button type="button" data-timeframe="1H">1H</button>
+                                    <button type="button" data-timeframe="1D">1D</button>
+                                    <button class="active" type="button" data-timeframe="1W">1W</button>
+                                    <button type="button" data-timeframe="1M">1M</button>
+                                    <button type="button" data-timeframe="1Y">1Y</button>
                                 </div>
                             </div>
+                            <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+                            <div class="chart-footer"><span><span class="legend-dot red"></span>Price</span><span><span class="legend-dot blue"></span>Moving average</span><small id="dataSourceLabel">Live USD market data</small></div>
+                        </article>
+
+                        <article class="panel portfolio-panel">
+                            <div class="panel-header"><div><p class="eyebrow">Saved portfolio</p><h2>Portfolio analysis</h2></div><button class="text-button" type="button" data-view-link="portfolio">Manage <i class="ph ph-arrow-right"></i></button></div>
+                            <div class="allocation-ring" id="allocationRing"><div><span>Total value</span><strong id="portfolioValue">$0.00</strong></div></div>
+                            <div class="portfolio-change"><span>24h performance</span><strong id="portfolioPerformance">0.00%</strong></div>
+                            <div class="watch-preview" id="dashboardWatchlist"></div>
+                            <div class="quick-actions"><button type="button" data-view-link="exchange" data-mode="buy">Buy</button><button type="button" data-view-link="exchange" data-mode="sell">Sell</button><button class="secondary" type="button" data-view-link="exchange">Swap</button></div>
+                        </article>
+
+                        <article class="panel insight-panel">
+                            <div class="panel-header"><div><p class="eyebrow">Signal desk</p><h2>Market insights</h2></div><span class="live-pill"><span></span>Live</span></div>
+                            <div id="insightsList" class="insight-list"></div>
+                            <div class="confidence"><div><span>Signal confidence</span><strong>88%</strong></div><span><i></i></span></div>
+                        </article>
+
+                        <article class="panel depth-panel">
+                            <div class="panel-header"><div><p class="eyebrow">Order flow</p><h2>Market depth (BTC/USD)</h2></div><div class="depth-legend"><span class="buy">Buy</span><span class="sell">Sell</span></div></div>
+                            <div class="depth-visual"><div class="depth-buy"></div><div class="depth-sell"></div><span class="depth-mid">$62.6K</span></div>
+                            <div class="depth-labels"><span>Bid volume</span><span>Market price</span><span>Ask volume</span></div>
+                        </article>
+
+                        <article class="panel market-mini-panel">
+                            <div class="panel-header"><div><p class="eyebrow">Realtime</p><h2>Market overview</h2></div><button class="text-button" type="button" data-view-link="markets">View all <i class="ph ph-arrow-right"></i></button></div>
+                            <div id="marketMiniList" class="market-mini-list"></div>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="app-view" data-view="markets">
+                    <div class="market-movers">
+                        <article class="panel mover-card"><div class="panel-header"><div><p class="eyebrow">Momentum</p><h2>Top gainers (24h)</h2></div><i class="ph ph-trend-up mover-icon positive"></i></div><div id="gainersList" class="mover-list"></div></article>
+                        <article class="panel mover-card"><div class="panel-header"><div><p class="eyebrow">Pullback</p><h2>Top losers (24h)</h2></div><i class="ph ph-trend-down mover-icon negative"></i></div><div id="losersList" class="mover-list"></div></article>
+                    </div>
+                    <article class="panel market-table-panel">
+                        <div class="market-toolbar">
+                            <div class="table-search"><i class="ph ph-magnifying-glass"></i><input id="marketSearchInput" type="search" placeholder="Search all cryptocurrencies..." aria-label="Filter markets"></div>
+                            <div class="filter-chips"><button class="active" type="button" data-market-filter="all">All assets</button><button type="button" data-market-filter="gainers">Gainers</button><button type="button" data-market-filter="watchlist">Watchlist</button></div>
                         </div>
-                        <div class="timeframe-group">
-                            <button class="tf-btn" data-tf="1H">1H</button>
-                            <button class="tf-btn" data-tf="1D">1D</button>
-                            <button class="tf-btn active" data-tf="1W">1W</button>
-                            <button class="tf-btn" data-tf="1M">1M</button>
-                            <button class="tf-btn" data-tf="1Y">1Y</button>
+                        <div class="table-scroll">
+                            <table class="data-table market-table">
+                                <thead><tr><th class="watch-cell">Watch</th><th>#</th><th>Asset</th><th>Price</th><th>24h change</th><th>7d trend</th><th>Market cap</th><th>Volume (24h)</th><th></th></tr></thead>
+                                <tbody id="marketTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="table-footer"><span id="marketResultCount">0 assets</span><div class="pagination"><button type="button" data-page-step="-1"><i class="ph ph-caret-left"></i></button><span id="marketPageLabel">1 / 1</span><button type="button" data-page-step="1"><i class="ph ph-caret-right"></i></button></div></div>
+                    </article>
+                </section>
+
+                <section class="app-view" data-view="portfolio">
+                    <div class="portfolio-hero panel">
+                        <div class="portfolio-total"><p class="eyebrow">Saved assets value</p><strong id="portfolioHeroValue">$0.00</strong><span id="portfolioHeroChange" class="positive-text">0.00% today</span><p>Calculated as one unit of every watched asset.</p></div>
+                        <div class="portfolio-ring-large" id="portfolioRingLarge"><div><strong id="portfolioAssetCount">0</strong><span>assets</span></div></div>
+                        <div id="allocationLegend" class="allocation-legend"></div>
+                    </div>
+                    <div class="portfolio-layout">
+                        <article class="panel assets-panel">
+                            <div class="panel-header"><div><p class="eyebrow">Cloud watchlist</p><h2>My assets</h2></div><button class="primary-button compact-button" type="button" data-view-link="markets"><i class="ph ph-plus"></i><span>Add asset</span></button></div>
+                            <div class="table-scroll"><table class="data-table"><thead><tr><th>Asset</th><th>Current price</th><th>24h change</th><th>Allocation</th><th></th></tr></thead><tbody id="portfolioTableBody"></tbody></table></div>
+                        </article>
+                        <aside class="panel portfolio-side">
+                            <div class="panel-header"><div><p class="eyebrow">Activity</p><h2>Portfolio updates</h2></div></div>
+                            <div id="portfolioActivity" class="activity-list"></div>
+                        </aside>
+                    </div>
+                </section>
+
+                <section class="app-view" data-view="exchange">
+                    <div class="exchange-layout">
+                        <section class="exchange-card panel">
+                            <div class="trade-toggle"><button class="active" type="button" data-trade-mode="buy">Buy</button><button type="button" data-trade-mode="sell">Sell</button></div>
+                            <div class="panel-header exchange-heading"><div><p class="eyebrow">Instant conversion</p><h2>Swap crypto</h2></div><span class="secure-label"><i class="ph ph-shield-check"></i> Simulated trade</span></div>
+                            <label class="exchange-field"><span>Pay</span><div><input id="payAmount" type="number" min="0" step="any" value="0.01" aria-label="Amount to pay"><button id="payCoinButton" type="button" data-action="cycle-pay-coin"><img id="payCoinImage" src="assets/logo.svg" alt=""><span><strong id="payCoinSymbol">USD</strong><small id="payCoinName">US Dollar</small></span><i class="ph ph-caret-down"></i></button></div><small id="payEstimate">Available for simulation</small></label>
+                            <button class="swap-direction" type="button" data-action="reverse-swap" aria-label="Reverse swap"><i class="ph ph-arrows-down-up"></i></button>
+                            <label class="exchange-field"><span>Receive</span><div><input id="receiveAmount" type="text" value="0" readonly aria-label="Amount to receive"><button id="receiveCoinButton" type="button" data-action="cycle-receive-coin"><img id="receiveCoinImage" src="assets/logo.svg" alt=""><span><strong id="receiveCoinSymbol">BTC</strong><small id="receiveCoinName">Bitcoin</small></span><i class="ph ph-caret-down"></i></button></div><small id="exchangeRate">Live market rate</small></label>
+                            <button id="swapButton" class="primary-button swap-button" type="button"><span>Preview swap</span><i class="ph-bold ph-arrow-right"></i></button>
+                            <p class="simulation-note"><i class="ph ph-info"></i> This dashboard records a portfolio simulation. It never moves real funds.</p>
+                        </section>
+                        <aside class="panel quote-panel">
+                            <div class="panel-header"><div><p class="eyebrow">Order summary</p><h2>Live quote</h2></div></div>
+                            <div class="quote-coin"><img id="quoteCoinImage" src="assets/logo.svg" alt=""><div><strong id="quoteCoinName">Bitcoin</strong><span id="quoteCoinPrice">$0.00</span></div><span id="quoteCoinChange">0.00%</span></div>
+                            <dl class="quote-list"><div><dt>Market rate</dt><dd id="quoteRate">-</dd></div><div><dt>Network fee</dt><dd>$0.00</dd></div><div><dt>Processing</dt><dd>Instant</dd></div><div><dt>Settlement</dt><dd>Simulation only</dd></div></dl>
+                        </aside>
+                    </div>
+                </section>
+
+                <section class="app-view" data-view="history">
+                    <div class="stats-grid">
+                        <article class="stat-card panel"><span class="stat-icon"><i class="ph ph-chart-bar"></i></span><div><p>Simulated volume</p><strong id="historyVolume">$0.00</strong></div></article>
+                        <article class="stat-card panel"><span class="stat-icon"><i class="ph ph-receipt"></i></span><div><p>Recorded transactions</p><strong id="historyCount">0</strong></div></article>
+                        <article class="stat-card panel"><span class="stat-icon"><i class="ph ph-cloud-check"></i></span><div><p>Portfolio sync</p><strong id="historySyncStatus">Guest</strong></div></article>
+                    </div>
+                    <article class="panel history-panel">
+                        <div class="history-toolbar"><div class="table-search"><i class="ph ph-magnifying-glass"></i><input id="historySearchInput" type="search" placeholder="Search transactions..." aria-label="Search transactions"></div><button class="secondary-button" type="button" data-action="clear-history"><i class="ph ph-trash"></i> Clear simulations</button></div>
+                        <div class="table-scroll"><table class="data-table"><thead><tr><th>Status</th><th>Date &amp; time</th><th>Pair</th><th>Action</th><th>Pay</th><th>Receive</th><th>Source</th></tr></thead><tbody id="historyTableBody"></tbody></table></div>
+                    </article>
+                </section>
+
+                <section class="app-view" data-view="settings">
+                    <div class="settings-layout">
+                        <aside class="settings-profile panel">
+                            <div id="settingsAvatar" class="settings-avatar">G</div>
+                            <h2 id="settingsName">Guest investor</h2>
+                            <p id="settingsEmail">Sign in to sync</p>
+                            <span id="settingsSyncBadge" class="sync-badge"><span></span>Local session</span>
+                            <button id="settingsAuthButton" class="primary-button full-button" type="button" data-action="open-auth">Sign in</button>
+                        </aside>
+                        <div class="settings-panels">
+                            <article class="panel settings-section">
+                                <div class="panel-header"><div><p class="eyebrow">Account</p><h2>Security &amp; cloud sync</h2></div><i class="ph ph-shield-check settings-title-icon"></i></div>
+                                <button class="settings-row" type="button" data-action="account-action"><span class="settings-row-icon"><i class="ph ph-user-circle"></i></span><span><strong>Firebase authentication</strong><small id="firebaseAuthState">Email/password enabled</small></span><span id="firebaseStatus" class="row-status">Ready</span></button>
+                                <button class="settings-row" type="button" data-action="account-action"><span class="settings-row-icon"><i class="ph ph-cloud-check"></i></span><span><strong>Firestore watchlist</strong><small>Private portfolio saved by account ID</small></span><span class="row-status">Connected</span></button>
+                            </article>
+                            <article class="panel settings-section">
+                                <div class="panel-header"><div><p class="eyebrow">Preferences</p><h2>App experience</h2></div><i class="ph ph-sliders-horizontal settings-title-icon"></i></div>
+                                <label class="settings-row"><span class="settings-row-icon"><i class="ph ph-bell"></i></span><span><strong>Market notifications</strong><small>Show movement and portfolio alerts</small></span><input id="notificationToggle" class="switch-input" type="checkbox" checked><span class="switch"></span></label>
+                                <label class="settings-row"><span class="settings-row-icon"><i class="ph ph-chart-line"></i></span><span><strong>Live chart motion</strong><small>Animate chart changes and transitions</small></span><input id="motionToggle" class="switch-input" type="checkbox" checked><span class="switch"></span></label>
+                            </article>
+                            <article class="panel about-card"><img src="assets/logo.svg" alt=""><div><strong>CrypDash</strong><span>Trading &amp; Analytics</span></div><small>Built for learning with free services.</small></article>
                         </div>
                     </div>
-                    <div class="chart-canvas-wrap">
-                        <canvas id="mainChart"></canvas>
-                    </div>
-                </div>
+                </section>
+            </main>
+        </div>
+    </div>
 
-                <!-- Portfolio + Watchlist -->
-                <div class="glass-card p-6 flex flex-col">
-                    <h3 class="section-title" style="font-size:1.1rem;color:#fff;margin-bottom:4px">Portfolio Value</h3>
-                    <div id="portfolioValue" class="portfolio-value">$0<span class="portfolio-cents">.00</span></div>
-                    <p id="portfolioSummary" class="portfolio-summary">Sign in to track your saved coins.</p>
-                    <h3 class="watchlist-label">Your Watchlist</h3>
+    <nav class="mobile-nav" aria-label="Mobile navigation">
+        <button class="active" type="button" data-view-link="dashboard"><i class="ph ph-squares-four"></i><span>Dashboard</span></button>
+        <button type="button" data-view-link="markets"><i class="ph ph-chart-bar"></i><span>Markets</span></button>
+        <button type="button" data-view-link="portfolio"><i class="ph ph-chart-pie-slice"></i><span>Portfolio</span></button>
+        <button type="button" data-view-link="exchange"><i class="ph ph-arrows-left-right"></i><span>Exchange</span></button>
+        <button type="button" data-view-link="settings"><i class="ph ph-gear-six"></i><span>Settings</span></button>
+    </nav>
 
-                    <!-- Guest watchlist CTA -->
-                    <div id="watchlistGuestCta" class="watchlist-guest-cta" style="display:none">
-                        <i class="ph ph-lock" style="font-size:1.5rem;color:rgba(255,255,255,0.15)"></i>
-                        <p id="watchlistGuestText">Sign in to save favourites locally</p>
-                        <button class="wl-signin-btn" onclick="showAuth(true)">Sign In</button>
-                    </div>
-
-                    <div class="watchlist-scroll" id="watchlistContainer">
-                        <div id="emptyWatchlistMsg" class="empty-watchlist">
-                            <i class="ph ph-star" style="font-size:2rem;color:rgba(255,255,255,0.15)"></i>
-                            <p>No coins yet.</p>
-                            <p class="empty-sub">Click ★ in the market table.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ROW 2 — Market Table -->
-            <div class="glass-card overflow-hidden">
-                <div style="padding:1.5rem;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center">
-                    <h3 class="section-title" style="font-size:1.1rem;color:#fff">Market Overview</h3>
-                    <button class="view-all-btn">View All <i class="ph-bold ph-arrow-right"></i></button>
-                </div>
-                <div style="overflow-x:auto">
-                    <table class="market-table">
-                        <thead>
-                            <tr>
-                                <th style="text-align:center;width:64px">Watch</th>
-                                <th>Asset</th>
-                                <th style="text-align:right">Price</th>
-                                <th style="text-align:right">24h Change</th>
-                                <th style="text-align:right" class="col-hide-sm">24h Volume</th>
-                                <th style="text-align:right" class="col-hide-sm">Market Cap</th>
-                            </tr>
-                        </thead>
-                        <tbody id="marketTableBody">
-                            <tr>
-                                <td colspan="6" class="table-loading">
-                                    <i class="ph ph-spinner-gap animate-spin" style="font-size:1.75rem;color:var(--accent)"></i>
-                                    <p>Fetching live prices…</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-        </div><!-- /scroll-area -->
-    </main>
-</div><!-- /appShell -->
-
-<!-- Toast notification -->
-<div id="toast" class="toast"></div>
-
-<script type="module" src="js/app.js"></script>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 # CrypDash
 
-CrypDash is a cryptocurrency market dashboard with live CoinGecko snapshots, watchlists, and two persistence modes:
+CrypDash is a responsive cryptocurrency trading and analytics dashboard with live CoinGecko snapshots, portfolio watchlists, a swap simulator, and two persistence modes:
 
 - `Cloud sync mode`: Firebase Authentication + Cloud Firestore power user accounts and synced watchlists.
 - `Local preview mode`: if Firebase is still unconfigured, the app falls back to browser-only auth/watchlists so you can develop and demo for free.
@@ -33,19 +33,39 @@ The project is designed to deploy as a static site on Cloudflare Pages with no b
 - Firebase mode uses email/password authentication and Firestore-backed watchlists.
 - Preview mode stores demo accounts and watchlists in `localStorage`.
 
-## Features
+## Product views
 
-### Market dashboard
+### Dashboard and markets
 
 - Fetches the top 50 coins by market cap from the CoinGecko public API.
 - Falls back to built-in mock data if the API is unavailable or rate-limited.
-- Shows price, 24h change, 24h volume, market cap, and a focus chart.
+- Shows price, 24h change, volume, market cap, movers, trend lines, market depth, and a focus chart.
+- Provides searchable, filterable, paginated market discovery.
+
+### Portfolio
+
+- Uses the signed-in user's Firebase watchlist as the saved portfolio.
+- Reflects watchlist changes immediately while Firestore sync completes in the background.
+- Shows allocation, aggregate saved-asset value, performance, and recent simulation activity.
+
+### Exchange and history
+
+- Converts between live crypto prices with reversible pay/receive assets.
+- Records explicit simulation-only swaps in browser storage.
+- Provides searchable transaction history and aggregate simulation statistics.
+- Never connects a wallet or moves real funds.
 
 ### Auth and watchlists
 
 - `Firebase mode`: email/password sign-up, sign-in, sign-out, and cloud-synced watchlists.
 - `Local preview mode`: demo-friendly account storage in `localStorage`.
-- Watchlist-driven portfolio summary on the right-hand panel.
+- Watchlist state is cached locally for instant restoration, then reconciled with Firestore.
+
+### Responsive experience
+
+- Desktop sidebar and compact trading-terminal layout.
+- Mobile bottom navigation matching the supplied product designs.
+- Dedicated layouts for dashboard, markets, portfolio, exchange, history, and settings.
 
 ### Deployment target
 
@@ -136,7 +156,9 @@ watchlists/{userId}
 ## Notes
 
 - Firebase config values for web apps are project identifiers, not secrets.
-- CoinGecko historical chart data is still mocked; only current market snapshot data is live.
+- CoinGecko historical chart data is generated for demonstration; only the current market snapshot is live.
+- Portfolio totals represent one unit of each watched asset, not real wallet holdings.
+- Exchange transactions are simulations stored only in the current browser.
 - CoinGecko availability and rate limits can cause the dashboard to remain on its bundled fallback snapshot.
 - CrypDash is a software demonstration and does not provide investment advice.
 - If you want full production hardening later, the next step would be moving from CDN imports to a bundled setup like Vite.
